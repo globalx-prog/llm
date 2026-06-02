@@ -1,0 +1,59 @@
+=== PHASE3 HEALTH ===
+{
+  "ok": true,
+  "service": "phase3-rag-api",
+  "sources": [
+    {
+      "source": "/mnt/nas/knowledge",
+      "status": "ok",
+      "files": 1
+    },
+    {
+      "source": "/mnt/extdisk/knowledge",
+      "status": "ok",
+      "files": 1
+    }
+  ]
+}
+=== INVENTORY ===
+{
+  "inventory": [
+    {
+      "source": "/mnt/nas/knowledge",
+      "status": "ok",
+      "files": 1
+    },
+    {
+      "source": "/mnt/extdisk/knowledge",
+      "status": "ok",
+      "files": 1
+    }
+  ]
+}
+=== INGEST ===
+{
+  "files_ingested": 2,
+  "chunks_ingested": 2,
+  "projects": {
+    "mim-llm": 1,
+    "mim-ops": 1
+  },
+  "errors": [],
+  "reason": "phase3-setup",
+  "task_id": "P3-001"
+}
+=== SEARCH mim-llm ===
+{
+  "query": "kritische Antworten Modell",
+  "hits": []
+}
+=== ANSWER mim-llm ===
+{
+  "answer": "Keine passenden Quellen gefunden.",
+  "sources": [],
+  "retrieval": {
+    "query": "Welches Modell fuer kritische Antworten?",
+    "hits": []
+  },
+  "low_confidence": true
+}

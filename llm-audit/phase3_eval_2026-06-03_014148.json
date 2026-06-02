@@ -1,0 +1,19 @@
+{
+  "total": 2,
+  "passed": 2,
+  "pass_rate": 100.0,
+  "results": [
+    {
+      "query": "kritische Antworten quality",
+      "project": "mim-llm",
+      "ok": true,
+      "hits": 5
+    },
+    {
+      "query": "health checks logs monitoring",
+      "project": "mim-ops",
+      "ok": true,
+      "hits": 5
+    }
+  ]
+}

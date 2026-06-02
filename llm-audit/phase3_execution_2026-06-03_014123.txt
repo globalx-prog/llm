@@ -1,0 +1,128 @@
+=== INGEST ===
+{
+  "files_ingested": 2,
+  "chunks_ingested": 2,
+  "projects": {
+    "mim-llm": 1,
+    "mim-ops": 1
+  },
+  "errors": [],
+  "reason": "phase3-final",
+  "task_id": "P3-FINAL"
+}
+=== SEARCH mim-llm ===
+{
+  "query": "kritische Antworten quality",
+  "hits": [
+    {
+      "score": 0.5298129428260177,
+      "text": "# LLM Handbuch\nDer Dienst bietet zwei Modelle: fast und quality.\nFuer kritische Antworten soll quality genutzt werden.",
+      "source": {
+        "title": "handbuch.md",
+        "path": "/mnt/nas/knowledge/mim-llm/handbuch.md",
+        "project": "mim-llm",
+        "timestamp": "2026-06-02T23:41:23.457935+00:00",
+        "chunk_id": "handbuch.md::0000"
+      }
+    },
+    {
+      "score": 0.5298129428260177,
+      "text": "# LLM Handbuch\nDer Dienst bietet zwei Modelle: fast und quality.\nFuer kritische Antworten soll quality genutzt werden.",
+      "source": {
+        "title": "handbuch.md",
+        "path": "/mnt/nas/knowledge/mim-llm/handbuch.md",
+        "project": "mim-llm",
+        "timestamp": "2026-06-02T23:40:59.762897+00:00",
+        "chunk_id": "handbuch.md::0000"
+      }
+    },
+    {
+      "score": 0.5298129428260177,
+      "text": "# LLM Handbuch\nDer Dienst bietet zwei Modelle: fast und quality.\nFuer kritische Antworten soll quality genutzt werden.",
+      "source": {
+        "title": "handbuch.md",
+        "path": "/mnt/nas/knowledge/mim-llm/handbuch.md",
+        "project": "mim-llm",
+        "timestamp": "2026-06-02T23:40:36.788360+00:00",
+        "chunk_id": "handbuch.md::0000"
+      }
+    }
+  ]
+}
+=== ANSWER mim-ops ===
+{
+  "answer": "ok-fast",
+  "sources": [
+    {
+      "title": "betrieb.txt",
+      "path": "/mnt/extdisk/knowledge/mim-ops/betrieb.txt",
+      "project": "mim-ops",
+      "timestamp": "2026-06-02T23:41:23.462392+00:00",
+      "chunk_id": "betrieb.txt::0000"
+    },
+    {
+      "title": "betrieb.txt",
+      "path": "/mnt/extdisk/knowledge/mim-ops/betrieb.txt",
+      "project": "mim-ops",
+      "timestamp": "2026-06-02T23:40:59.767550+00:00",
+      "chunk_id": "betrieb.txt::0000"
+    },
+    {
+      "title": "betrieb.txt",
+      "path": "/mnt/extdisk/knowledge/mim-ops/betrieb.txt",
+      "project": "mim-ops",
+      "timestamp": "2026-06-02T23:40:36.796037+00:00",
+      "chunk_id": "betrieb.txt::0000"
+    }
+  ],
+  "retrieval": {
+    "query": "Was zuerst bei Stoerung?",
+    "hits": [
+      {
+        "score": 0.25,
+        "text": "Betriebshinweis: Bei stoerungen zuerst health checks auf /healthz ausfuehren.\nDanach Logs und Monitoring pruefen.",
+        "source": {
+          "title": "betrieb.txt",
+          "path": "/mnt/extdisk/knowledge/mim-ops/betrieb.txt",
+          "project": "mim-ops",
+          "timestamp": "2026-06-02T23:41:23.462392+00:00",
+          "chunk_id": "betrieb.txt::0000"
+        }
+      },
+      {
+        "score": 0.25,
+        "text": "Betriebshinweis: Bei stoerungen zuerst health checks auf /healthz ausfuehren.\nDanach Logs und Monitoring pruefen.",
+        "source": {
+          "title": "betrieb.txt",
+          "path": "/mnt/extdisk/knowledge/mim-ops/betrieb.txt",
+          "project": "mim-ops",
+          "timestamp": "2026-06-02T23:40:59.767550+00:00",
+          "chunk_id": "betrieb.txt::0000"
+        }
+      },
+      {
+        "score": 0.25,
+        "text": "Betriebshinweis: Bei stoerungen zuerst health checks auf /healthz ausfuehren.\nDanach Logs und Monitoring pruefen.",
+        "source": {
+          "title": "betrieb.txt",
+          "path": "/mnt/extdisk/knowledge/mim-ops/betrieb.txt",
+          "project": "mim-ops",
+          "timestamp": "2026-06-02T23:40:36.796037+00:00",
+          "chunk_id": "betrieb.txt::0000"
+        }
+      }
+    ]
+  },
+  "model": "fast",
+  "router_meta": {
+    "requested_model": "fast",
+    "selected_model": "fast",
+    "attempted_models": [
+      "fast"
+    ],
+    "latency_ms": 66,
+    "request_id": "n/a",
+    "fallback_used": false
+  },
+  "low_confidence": false
+}

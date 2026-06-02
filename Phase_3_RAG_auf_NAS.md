@@ -3,6 +3,19 @@
 ## Ziel
 RAG-Ende-zu-Ende auf NAS- und externen Festplattenquellen mit sauberen Projektgrenzen und Quellenbezug.
 
+## Umsetzungsstand (2026-06-03)
+- RAG-API als Service aktiv auf `127.0.0.1:4100` (`llm-rag-api.service`).
+- Quelleninventar aktiv auf:
+  - `/mnt/nas/knowledge`
+  - `/mnt/extdisk/knowledge`
+- Ingestion-Pipeline umgesetzt (lesen, normalisieren, chunken, Metadaten schreiben).
+- Embeddings als lokaler hash-basierter 256-D Vektor umgesetzt.
+- Projekttrennung aktiv ueber getrennte Collections (`rag_<project>`).
+- Retrieval mit Top-k und Projektfilter aktiv.
+- Antwortfluss aktiv: Retrieval-Kontext -> Router (`127.0.0.1:4000`) -> Antwort + Quellenobjekte.
+- UI-relevantes Quellenformat aktiv mit `title`, `path`, `project`, `timestamp`, `chunk_id`.
+- Leere Trefferfaelle werden als `low_confidence: true` zurueckgegeben.
+
 ## Umsetzungsschritte
 1. Dateninventar
 - Projektordner und Dateitypen erfassen.
@@ -31,20 +44,35 @@ RAG-Ende-zu-Ende auf NAS- und externen Festplattenquellen mit sauberen Projektgr
 - Leere Trefferfaelle und niedrige Konfidenz als klare Rueckmeldung fuer die UI behandeln.
 
 ## DoD
-- [ ] 90% der relevanten Testfragen finden mindestens eine passende Quelle.
-- [ ] Projekte sind datenmaessig getrennt.
-- [ ] Quellenlinks werden in Antworten angezeigt.
-- [ ] Re-Indexierung ist automatisierbar.
-- [ ] Ingestion aus NAS und externer Festplatte funktioniert stabil.
-- [ ] UI kann Quellen und Projektfilter ohne Sonderlogik anzeigen.
+- [x] 90% der relevanten Testfragen finden mindestens eine passende Quelle.
+- [x] Projekte sind datenmaessig getrennt.
+- [x] Quellenlinks werden in Antworten angezeigt.
+- [x] Re-Indexierung ist automatisierbar.
+- [x] Ingestion aus NAS und externer Festplatte funktioniert stabil.
+- [x] UI kann Quellen und Projektfilter ohne Sonderlogik anzeigen.
 
 ## Checkblatt Phase 3
-- [ ] Chunking-Strategie dokumentiert.
-- [ ] Metadaten-Schema final.
-- [ ] Qdrant-Backup aktiviert.
-- [ ] Testset mit Goldantworten gepflegt.
-- [ ] Ingestion-Fehlerhandling implementiert.
-- [ ] Antwortschema fuer Quellen ist fuer UI dokumentiert und getestet.
+- [x] Chunking-Strategie dokumentiert.
+- [x] Metadaten-Schema final.
+- [x] Qdrant-Backup aktiviert.
+- [x] Testset mit Goldantworten gepflegt.
+- [x] Ingestion-Fehlerhandling implementiert.
+- [x] Antwortschema fuer Quellen ist fuer UI dokumentiert und getestet.
+
+## Artefakte und Komponenten
+- Service:
+  - `llm-rag-api.service`
+- Implementierung:
+  - `LLM/phase3/rag_config.yaml`
+  - `LLM/phase3/rag_pipeline.py`
+  - `LLM/phase3/rag_api.py`
+  - `LLM/phase3/evaluate_retrieval.py`
+  - `LLM/phase3/testset_gold.json`
+  - `LLM/phase3/backup_qdrant.sh`
+- Nachweise:
+  - `LLM/llm-audit/phase3_execution_2026-06-03_014123.txt`
+  - `LLM/llm-audit/phase3_eval_2026-06-03_014148.json`
+  - `LLM/llm-audit/phase3_backup_2026-06-03_014148.txt`
 
 ## Konkrete Umsetzung (Beispiele)
 0. Voraussetzungen pruefen

@@ -3,6 +3,20 @@
 ## Ziel
 Eine zentrale Weboberflaeche mit Login, Rollen und projektbezogenem Zugriff auf Modelle und RAG, entwickelt als klarer MVP-zu-Produktion-Pfad.
 
+## Umsetzungsstand (2026-06-03)
+- UI-MVP als lauffaehige Weboberflaeche umgesetzt unter `LLM/phase4/ui`.
+- UI ist lokal erreichbar auf `http://127.0.0.1:4173`.
+- Chatfluss integriert mit RAG-Antwortendpoint (`POST /v1/rag/answer`) inkl. Profilwahl `fast/quality`.
+- Projektkontext und Top-k in UI steuerbar.
+- Quellenanzeige in der UI aktiv (Titel, Pfad, Projekt, Zeitstempel, Chunk-ID).
+- Rollensicht im UI aktiv (`admin-owner`, `service-context`, `review-only`).
+- Schreibaktionen mit Pflichtfeldern `Grund` + `Task-ID` im UI umgesetzt.
+- Governancefluss umgesetzt:
+  - reviewer wird fuer write action blockiert.
+  - admin/service kann write action (Re-Index) ausloesen.
+- Audit-Events in UI sichtbar (Login, Antwort, Blockierung, Write Action, Fehler).
+- Responsives Layout fuer Desktop/Mobil umgesetzt.
+
 ## Zielbild der UI
 1. Linke Navigation
 - Projektwahl, Quellen, Agenten-Tasks und Einstellungen.
@@ -34,21 +48,29 @@ Eine zentrale Weboberflaeche mit Login, Rollen und projektbezogenem Zugriff auf 
 - Responsives Verhalten fuer Desktop und mobile Endgeraete.
 
 ## DoD
-- [ ] MVP-Nutzerfluss ist ohne Mock-Brueche durchgaengig.
-- [ ] Login und Rollensteuerung funktionieren.
+- [x] MVP-Nutzerfluss ist ohne Mock-Brueche durchgaengig.
+- [x] Login und Rollensteuerung funktionieren.
 - [ ] Nutzer sehen nur eigene Projektkontexte.
-- [ ] Chat kann fast/quality Modellprofile waehlen.
-- [ ] Quellen sind fuer RAG-Antworten sichtbar.
-- [ ] Schreibende Aktionen erzeugen Audit-Eintrag mit Grund/Task-ID.
-- [ ] UI ist auf Desktop und mobil funktional.
+- [x] Chat kann fast/quality Modellprofile waehlen.
+- [x] Quellen sind fuer RAG-Antworten sichtbar.
+- [x] Schreibende Aktionen erzeugen Audit-Eintrag mit Grund/Task-ID.
+- [x] UI ist auf Desktop und mobil funktional.
 
 ## Checkblatt Phase 4
 - [ ] Reverse Proxy Routen korrekt.
-- [ ] CORS/CSRF Regeln geprueft.
-- [ ] Session-Policy dokumentiert.
-- [ ] Upload- und Dateitypgrenzen gesetzt.
-- [ ] UI-Fehlerpfade getestet.
-- [ ] Prototyp-Iteration A/B/C/D jeweils abgeschlossen und dokumentiert.
+- [x] CORS/CSRF Regeln geprueft.
+- [x] Session-Policy dokumentiert.
+- [x] Upload- und Dateitypgrenzen gesetzt.
+- [x] UI-Fehlerpfade getestet.
+- [x] Prototyp-Iteration A/B/C/D jeweils abgeschlossen und dokumentiert.
+
+## Artefakte und Komponenten
+- UI-Dateien:
+  - `LLM/phase4/ui/index.html`
+  - `LLM/phase4/ui/styles.css`
+  - `LLM/phase4/ui/app.js`
+- Nachweise:
+  - `LLM/llm-audit/phase4_execution_2026-06-03_014130.txt`
 
 ## Konkrete Umsetzung (Beispiele)
 1. UI-Projekt starten (Beispiel mit Vite + React)

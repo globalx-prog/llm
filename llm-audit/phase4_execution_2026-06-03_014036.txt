@@ -1,0 +1,75 @@
+=== UI STATIC CHECK ===
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Control Deck</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg"></div>
+  <header class="topbar">
+    <h1>LLM Control Deck</h1>
+    <div id="sessionBadge" class="badge">Nicht eingeloggt</div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel nav">
+      <h2>Projektkontext</h2>
+      <label>Projekt
+        <input id="projectInput" value="mim-llm" />
+=== RAG HEALTH ===
+{
+  "ok": true,
+  "service": "phase3-rag-api",
+  "sources": [
+    {
+      "source": "/mnt/nas/knowledge",
+      "status": "ok",
+      "files": 1
+    },
+    {
+      "source": "/mnt/extdisk/knowledge",
+      "status": "ok",
+      "files": 1
+    }
+  ]
+}
+=== RAG INVENTORY ===
+{
+  "inventory": [
+    {
+      "source": "/mnt/nas/knowledge",
+      "status": "ok",
+      "files": 1
+    },
+    {
+      "source": "/mnt/extdisk/knowledge",
+      "status": "ok",
+      "files": 1
+    }
+  ]
+}
+=== RAG ANSWER FAST ===
+{
+  "answer": "Keine passenden Quellen gefunden.",
+  "sources": [],
+  "retrieval": {
+    "query": "health checks zuerst?",
+    "hits": []
+  },
+  "low_confidence": true
+}
+=== WRITE ACTION (audit via ingest headers) ===
+{
+  "files_ingested": 2,
+  "chunks_ingested": 2,
+  "projects": {
+    "mim-llm": 1,
+    "mim-ops": 1
+  },
+  "errors": [],
+  "reason": "phase4-write-action",
+  "task_id": "P4-001"
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "query": "kritische Antworten quality",
+    "project": "mim-llm",
+    "expected_path_contains": "/mnt/nas/knowledge/mim-llm/handbuch.md"
+  },
+  {
+    "query": "health checks logs monitoring",
+    "project": "mim-ops",
+    "expected_path_contains": "/mnt/extdisk/knowledge/mim-ops/betrieb.txt"
+  }
+]

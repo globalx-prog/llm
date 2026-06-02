@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LLM Control Deck</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg"></div>
+  <header class="topbar">
+    <h1>LLM Control Deck</h1>
+    <div id="sessionBadge" class="badge">Nicht eingeloggt</div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel nav">
+      <h2>Projektkontext</h2>
+      <label>Projekt
+        <input id="projectInput" value="mim-llm" />
+      </label>
+      <label>Top-K
+        <input id="topKInput" type="number" min="1" max="20" value="5" />
+      </label>
+
+      <h2>Login / Rolle</h2>
+      <label>User
+        <input id="userInput" placeholder="z. B. clemi" value="clemi" />
+      </label>
+      <label>Rolle
+        <select id="roleInput">
+          <option value="admin">admin-owner</option>
+          <option value="service">service-context</option>
+          <option value="reviewer">review-only</option>
+        </select>
+      </label>
+      <button id="loginBtn">Login</button>
+
+      <h2>Write Action</h2>
+      <label>Grund
+        <input id="reasonInput" placeholder="Warum wird geschrieben?" value="manual-reindex" />
+      </label>
+      <label>Task-ID
+        <input id="taskInput" placeholder="z. B. P4-INGEST-01" value="P4-INGEST-01" />
+      </label>
+      <button id="reindexBtn">Re-Index starten</button>
+      <p class="hint">Nur Rollen admin/service duerfen schreiben.</p>
+    </aside>
+
+    <section class="panel chat">
+      <div class="chatHead">
+        <h2>Chat</h2>
+        <label>Modell
+          <select id="modelInput">
+            <option value="fast">fast</option>
+            <option value="quality">quality</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="messages" class="messages"></div>
+
+      <div class="composer">
+        <textarea id="promptInput" rows="4" placeholder="Frage mit Projektkontext stellen..."></textarea>
+        <button id="sendBtn">Senden</button>
+      </div>
+    </section>
+
+    <aside class="panel transparency">
+      <h2>Transparenz</h2>
+      <div id="statusBox" class="status">Bereit</div>
+      <h3>Quellen</h3>
+      <ul id="sourcesList" class="sources"></ul>
+      <h3>Audit-Events</h3>
+      <ul id="auditList" class="audit"></ul>
+    </aside>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

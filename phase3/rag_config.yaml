@@ -1,0 +1,33 @@
+sources:
+  - /mnt/nas/knowledge
+  - /mnt/extdisk/knowledge
+exclude_globs:
+  - "*.bin"
+  - "*.tmp"
+  - "*.sqlite"
+  - "*.db"
+  - "*.jpg"
+  - "*.jpeg"
+  - "*.png"
+  - "*.gif"
+  - "*.pdf"
+allowed_extensions:
+  - .md
+  - .txt
+  - .rst
+  - .json
+  - .yaml
+  - .yml
+chunk:
+  size: 700
+  overlap: 120
+embedding:
+  model: hash-256-v1
+  size: 256
+qdrant:
+  local_path: /data/rag/qdrant
+  collection_prefix: rag_
+api:
+  host: 127.0.0.1
+  port: 4100
+  default_top_k: 5
