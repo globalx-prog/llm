@@ -46,7 +46,13 @@ Folgende Services sind aktiv:
 - Funktionale Ausfuehrung: `LLM/llm-audit/phase2_execution_2026-06-03_011817.txt`
 - Monitoring-Nachweis: `LLM/llm-audit/phase2_monitoring_2026-06-03_012207.txt`
 
-## 7) Hinweis zu LiteLLM
+## 7) Git-Sicherung und Push
+- Git-Repository initialisiert in `LLM/`.
+- Commit erstellt: `826fcb8` mit aktuellem Projektstand.
+- Remote gesetzt auf lokales Bare-Repo: `/home/clemi/projekte/LLM-remote.git`.
+- Push erfolgreich auf Branch `main`.
+
+## 8) Hinweis zu LiteLLM
 - LiteLLM konnte in dieser Umgebung nicht stabil installiert werden (Python-3.14 / `orjson` / `PyO3` Build-Konflikt).
 - Deshalb wurde fuer Phase 2 ein nativer Router mit identischem API-Kontrakt umgesetzt.
 - Konfiguration bleibt unter `/data/litellm/config.yaml`, damit ein spaeterer Wechsel auf LiteLLM moeglich bleibt.
