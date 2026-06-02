@@ -31,3 +31,10 @@ api:
   host: 127.0.0.1
   port: 4100
   default_top_k: 5
+access_policy:
+  clemi:
+    role: admin
+    projects: [mim-llm, mim-ops]
+  reviewer:
+    role: reviewer
+    projects: [mim-llm]

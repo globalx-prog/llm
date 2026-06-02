@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -16,6 +16,7 @@ ROUTER_KEY = os.getenv("ROUTER_KEY", "change_me_phase2")
 
 pipeline = RagPipeline(CONFIG_PATH)
 app = FastAPI(title="phase3-rag-api")
+ACCESS_POLICY = dict(pipeline.cfg.get("access_policy", {}))
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,6 +49,38 @@ def _audit_event(event_type: str, payload: dict[str, Any]) -> None:
         json.dump(payload, f, ensure_ascii=True, indent=2)
 
 
+def _identity(x_user: str | None, x_role: str | None) -> tuple[str, str]:
+    user = (x_user or "").strip()
+    role = (x_role or "").strip()
+    if not user:
+        raise HTTPException(status_code=401, detail="missing user identity")
+
+    policy = ACCESS_POLICY.get(user)
+    if not policy:
+        raise HTTPException(status_code=403, detail="user not allowed")
+
+    expected_role = str(policy.get("role", "")).strip()
+    if role and expected_role and role != expected_role:
+        raise HTTPException(status_code=403, detail="role mismatch")
+
+    return user, expected_role or role or "unknown"
+
+
+def _enforce_project(user: str, project: str | None) -> str:
+    allowed = list(ACCESS_POLICY.get(user, {}).get("projects", []))
+    if not allowed:
+        raise HTTPException(status_code=403, detail="no projects assigned")
+
+    if project:
+        if project not in allowed:
+            raise HTTPException(status_code=403, detail="project access denied")
+        return project
+
+    if len(allowed) == 1:
+        return allowed[0]
+    raise HTTPException(status_code=400, detail="project required for multi-project users")
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, Any]:
     inv = pipeline.inventory()
@@ -59,31 +92,65 @@ def healthz() -> dict[str, Any]:
 
 
 @app.post("/v1/rag/inventory")
-def inventory() -> dict[str, Any]:
+def inventory(
+    x_user: str | None = Header(default=None),
+    x_role: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user, role = _identity(x_user, x_role)
+    allowed_projects = list(ACCESS_POLICY.get(user, {}).get("projects", []))
     data = {"inventory": pipeline.inventory()}
-    _audit_event("inventory", data)
+    data["allowed_projects"] = allowed_projects
+    _audit_event("inventory", {"user": user, "role": role, **data})
     return data
 
 
 @app.post("/v1/rag/ingest")
-def ingest(x_reason: str = Header(default="manual"), x_task_id: str = Header(default="none")) -> dict[str, Any]:
+def ingest(
+    x_reason: str = Header(default="manual"),
+    x_task_id: str = Header(default="none"),
+    x_user: str | None = Header(default=None),
+    x_role: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user, role = _identity(x_user, x_role)
+    if role not in {"admin", "service"}:
+        raise HTTPException(status_code=403, detail="write action not allowed for role")
+    if not x_reason.strip() or not x_task_id.strip():
+        raise HTTPException(status_code=400, detail="reason and task-id are required")
+
     result = pipeline.ingest()
     result["reason"] = x_reason
     result["task_id"] = x_task_id
+    result["user"] = user
+    result["role"] = role
     _audit_event("ingest", result)
     return result
 
 
 @app.post("/v1/rag/search")
-def search(req: SearchRequest) -> dict[str, Any]:
-    result = pipeline.search(req.query, req.top_k, req.project)
-    _audit_event("search", {"query": req.query, "project": req.project, "top_k": req.top_k, "hits": len(result["hits"])})
+def search(
+    req: SearchRequest,
+    x_user: str | None = Header(default=None),
+    x_role: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user, role = _identity(x_user, x_role)
+    project = _enforce_project(user, req.project)
+    result = pipeline.search(req.query, req.top_k, project)
+    _audit_event(
+        "search",
+        {"user": user, "role": role, "query": req.query, "project": project, "top_k": req.top_k, "hits": len(result["hits"])},
+    )
     return result
 
 
 @app.post("/v1/rag/answer")
-async def answer(req: AnswerRequest) -> dict[str, Any]:
-    retrieval = pipeline.search(req.query, req.top_k, req.project)
+async def answer(
+    req: AnswerRequest,
+    x_user: str | None = Header(default=None),
+    x_role: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user, role = _identity(x_user, x_role)
+    project = _enforce_project(user, req.project)
+    retrieval = pipeline.search(req.query, req.top_k, project)
     hits = retrieval.get("hits", [])
 
     context_blocks = []
@@ -139,7 +206,11 @@ async def answer(req: AnswerRequest) -> dict[str, Any]:
         "retrieval": retrieval,
         "model": data.get("model", req.model),
         "router_meta": data.get("router_meta", {}),
+        "project": project,
         "low_confidence": False,
     }
-    _audit_event("answer", {"query": req.query, "project": req.project, "sources": len(response["sources"])})
+    _audit_event(
+        "answer",
+        {"user": user, "role": role, "query": req.query, "project": project, "sources": len(response["sources"])},
+    )
     return response

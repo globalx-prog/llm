@@ -50,14 +50,14 @@ Eine zentrale Weboberflaeche mit Login, Rollen und projektbezogenem Zugriff auf 
 ## DoD
 - [x] MVP-Nutzerfluss ist ohne Mock-Brueche durchgaengig.
 - [x] Login und Rollensteuerung funktionieren.
-- [ ] Nutzer sehen nur eigene Projektkontexte.
+- [x] Nutzer sehen nur eigene Projektkontexte.
 - [x] Chat kann fast/quality Modellprofile waehlen.
 - [x] Quellen sind fuer RAG-Antworten sichtbar.
 - [x] Schreibende Aktionen erzeugen Audit-Eintrag mit Grund/Task-ID.
 - [x] UI ist auf Desktop und mobil funktional.
 
 ## Checkblatt Phase 4
-- [ ] Reverse Proxy Routen korrekt.
+- [x] Reverse Proxy Routen korrekt.
 - [x] CORS/CSRF Regeln geprueft.
 - [x] Session-Policy dokumentiert.
 - [x] Upload- und Dateitypgrenzen gesetzt.
@@ -69,8 +69,11 @@ Eine zentrale Weboberflaeche mit Login, Rollen und projektbezogenem Zugriff auf 
   - `LLM/phase4/ui/index.html`
   - `LLM/phase4/ui/styles.css`
   - `LLM/phase4/ui/app.js`
+- Reverse Proxy:
+  - `LLM/phase4/reverse-proxy/Caddyfile.phase4`
 - Nachweise:
   - `LLM/llm-audit/phase4_execution_2026-06-03_014130.txt`
+  - `LLM/llm-audit/phase4_isolation_2026-06-03_014558.txt`
 
 ## Konkrete Umsetzung (Beispiele)
 1. UI-Projekt starten (Beispiel mit Vite + React)

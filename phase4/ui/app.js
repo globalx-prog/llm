@@ -6,6 +6,14 @@ const state = {
   audit: [],
 };
 
+function authHeaders() {
+  if (!state.session) return {};
+  return {
+    'X-User': state.session.user,
+    'X-Role': state.session.role,
+  };
+}
+
 function addAudit(type, detail) {
   const entry = `${new Date().toISOString()} | ${type} | ${detail}`;
   state.audit.unshift(entry);
@@ -56,7 +64,7 @@ el('sendBtn').addEventListener('click', async () => {
   try {
     const res = await fetch(`${API_BASE}/v1/rag/answer`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ query, model, project, top_k }),
     });
     const data = await res.json();
@@ -111,6 +119,7 @@ el('reindexBtn').addEventListener('click', async () => {
       headers: {
         'X-Reason': reason,
         'X-Task-Id': taskId,
+        ...authHeaders(),
       },
     });
     const data = await res.json();

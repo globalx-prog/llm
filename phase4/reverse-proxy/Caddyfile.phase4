@@ -1,0 +1,16 @@
+# Phase 4 reverse proxy (SPA + Router + RAG API)
+# Domain and certificate handling are managed by Caddy in production.
+
+clemi.tail47b116.ts.net {
+  encode zstd gzip
+
+  @router path /v1/chat/completions /v1/models /metrics
+  reverse_proxy @router 127.0.0.1:4000
+
+  @rag path /v1/rag/* /rag/*
+  reverse_proxy @rag 127.0.0.1:4100
+
+  root * /home/clemi/projekte/LLM/phase4/ui
+  try_files {path} /index.html
+  file_server
+}

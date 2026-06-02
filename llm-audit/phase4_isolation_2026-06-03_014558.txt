@@ -1,0 +1,61 @@
+=== allowed search (clemi -> mim-llm) ===
+{
+  "query": "kritische Antworten quality",
+  "hits": [
+    {
+      "score": 0.5298129428260177,
+      "text": "# LLM Handbuch\nDer Dienst bietet zwei Modelle: fast und quality.\nFuer kritische Antworten soll quality genutzt werden.",
+      "source": {
+        "title": "handbuch.md",
+        "path": "/mnt/nas/knowledge/mim-llm/handbuch.md",
+        "project": "mim-llm",
+        "timestamp": "2026-06-02T23:41:31.032132+00:00",
+        "chunk_id": "handbuch.md::0000"
+      }
+    },
+    {
+      "score": 0.5298129428260177,
+      "text": "# LLM Handbuch\nDer Dienst bietet zwei Modelle: fast und quality.\nFuer kritische Antworten soll quality genutzt werden.",
+      "source": {
+        "title": "handbuch.md",
+        "path": "/mnt/nas/knowledge/mim-llm/handbuch.md",
+        "project": "mim-llm",
+        "timestamp": "2026-06-02T23:41:23.457935+00:00",
+        "chunk_id": "handbuch.md::0000"
+      }
+    },
+    {
+      "score": 0.5298129428260177,
+      "text": "# LLM Handbuch\nDer Dienst bietet zwei Modelle: fast und quality.\nFuer kritische Antworten soll quality genutzt werden.",
+      "source": {
+        "title": "handbuch.md",
+        "path": "/mnt/nas/knowledge/mim-llm/handbuch.md",
+        "project": "mim-llm",
+        "timestamp": "2026-06-02T23:40:59.762897+00:00",
+        "chunk_id": "handbuch.md::0000"
+      }
+    }
+  ]
+}
+=== denied project access (reviewer -> mim-ops) ===
+{
+  "detail": "project access denied"
+}
+=== denied write action (reviewer ingest) ===
+{
+  "detail": "write action not allowed for role"
+}
+=== allowed write action (clemi admin ingest) ===
+{
+  "files_ingested": 2,
+  "chunks_ingested": 2,
+  "projects": {
+    "mim-llm": 1,
+    "mim-ops": 1
+  },
+  "errors": [],
+  "reason": "test",
+  "task_id": "P4-ISO-002",
+  "user": "clemi",
+  "role": "admin"
+}
