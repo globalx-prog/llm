@@ -1,0 +1,20 @@
+{
+  "tagOwners": {
+    "tag:llm-server": ["globalx-prog@github"]
+  },
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["globalx-prog@github"],
+      "dst": ["tag:llm-server:22,443,3000,4000,6333"]
+    }
+  ],
+  "ssh": [
+    {
+      "action": "check",
+      "src": ["globalx-prog@github"],
+      "dst": ["tag:llm-server"],
+      "users": ["autogroup:nonroot", "root"]
+    }
+  ]
+}

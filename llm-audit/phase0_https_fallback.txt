@@ -1,0 +1,6 @@
+=== HTTPS CHECK VIA WGET ===
+Spider-Modus eingeschaltet. Es wird geprüft, ob die Datei auf dem Server existiert.
+--2026-06-02 23:25:37--  https://nas-clemens.de/
+Auflösen des Hostnamens nas-clemens.de (nas-clemens.de) … 192.168.178.83, 79.236.99.17
+Verbindungsaufbau zu nas-clemens.de (nas-clemens.de)|192.168.178.83|:443 … fehlgeschlagen: Die Wartezeit für die Verbindung ist abgelaufen.
+Verbindungsaufbau zu nas-clemens.de (nas-clemens.de)|79.236.99.17|:443 … fehlgeschlagen: Keine Route zum Zielrechner.

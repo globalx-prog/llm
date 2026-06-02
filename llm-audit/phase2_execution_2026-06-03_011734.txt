@@ -1,0 +1,22 @@
+=== HEALTH ===
+{"ok":true,"model":"quality","profile":"quality"}
+{"ok":true,"model":"fast","profile":"fast"}
+{"ok":true,"service":"phase2-router","models":["quality","fast"],"default_model":"fast","timeout_s":2.0,"concurrency_limit":12}
+=== MODELS ===
+{"object":"list","data":[{"id":"quality","object":"model","profile":"quality","api_base":"http://127.0.0.1:8000/v1","available":true},{"id":"fast","object":"model","profile":"fast","api_base":"http://127.0.0.1:8001/v1","available":true}]}
+=== CHAT FAST ===
+{"id":"chatcmpl-1780442254963","object":"chat.completion","created":1780442254,"model":"fast","choices":[{"index":0,"message":{"role":"assistant","content":"ok-fast"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":1,"total_tokens":4},"response_meta":{"latency_ms":60,"profile":"fast","backend":"fast"},"router_meta":{"requested_model":"fast","selected_model":"fast","attempted_models":["fast"],"latency_ms":66,"request_id":"n/a","fallback_used":false}}
+=== CHAT QUALITY ===
+{"id":"chatcmpl-1780442255194","object":"chat.completion","created":1780442255,"model":"quality","choices":[{"index":0,"message":{"role":"assistant","content":"ok-quality"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5},"response_meta":{"latency_ms":220,"profile":"quality","backend":"quality"},"router_meta":{"requested_model":"quality","selected_model":"quality","attempted_models":["quality"],"latency_ms":228,"request_id":"n/a","fallback_used":false}}
+=== ERROR INVALID KEY ===
+{"error":{"type":"router_error","code":"invalid_api_key","message":"Provided API key is not valid","details":{}}}
+=== ERROR TOKEN LIMIT ===
+{"error":{"type":"router_error","code":"token_limit_exceeded","message":"Requested max_tokens exceeds role or global limit","details":{"requested":2000,"role":"viewer","role_limit":800,"global_limit":4096}}}
+=== TIMEOUT/FALLBACK ===
+{"error":{"type":"router_error","code":"upstream_timeout_or_failure","message":"All model attempts failed","details":{"attempted_models":["quality","fast"],"timeout_s":2.0,"first_error":""}}}
+=== PARALLEL 20x ===
+     20 ok-fast
+=== SERVICES ===
+active
+active
+active

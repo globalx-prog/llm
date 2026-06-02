@@ -1,0 +1,105 @@
+=== DATE ===
+Di 2. Jun 23:24:44 CEST 2026
+=== UNAME ===
+Linux clemi 7.0.0-22-generic #22-Ubuntu SMP PREEMPT_DYNAMIC Mon May 25 15:54:34 UTC 2026 x86_64 GNU/Linux
+=== OS RELEASE ===
+PRETTY_NAME="Ubuntu 26.04 LTS"
+NAME="Ubuntu"
+VERSION_ID="26.04"
+VERSION="26.04 LTS (Resolute Raccoon)"
+VERSION_CODENAME=resolute
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=resolute
+LOGO=ubuntu-logo
+=== CPU ===
+Architektur:                             x86_64
+CPU Operationsmodus:                     32-bit, 64-bit
+Adressgrößen:                            39 bits physical, 48 bits virtual
+Byte-Reihenfolge:                        Little Endian
+CPU(s):                                  12
+Liste der Online-CPU(s):                 0-11
+Anbieterkennung:                         GenuineIntel
+Modellname:                              12th Gen Intel(R) Core(TM) i5-12400F
+Prozessorfamilie:                        6
+Modell:                                  151
+Thread(s) pro Kern:                      2
+Kern(e) pro Sockel:                      6
+Sockel:                                  1
+Stepping:                                2
+Skalierung der CPU(s):                   30%
+Maximale Taktfrequenz der CPU:           5600,0000
+Minimale Taktfrequenz der CPU:           800,0000
+BogoMIPS:                                4992,00
+Markierungen:                            fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf tsc_known_freq pni pclmulqdq dtes64 monitor ds_cpl vmx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap clflushopt clwb intel_pt sha_ni xsaveopt xsavec xgetbv1 xsaves split_lock_detect user_shstk avx_vnni dtherm ida arat pln pts hwp hwp_notify hwp_act_window hwp_epp hwp_pkg_req hfi vnmi umip pku ospke waitpkg gfni vaes vpclmulqdq rdpid movdiri movdir64b fsrm md_clear serialize arch_lbr ibt flush_l1d arch_capabilities
+Virtualisierung:                         VT-x
+L1d Cache:                               288 KiB (6 Instanzen)
+L1i Cache:                               192 KiB (6 Instanzen)
+L2 Cache:                                7,5 MiB (6 Instanzen)
+L3 Cache:                                18 MiB (1 Instanz)
+NUMA-Knoten:                             1
+NUMA-Knoten0 CPU(s):                     0-11
+Schwachstelle Gather data sampling:      Not affected
+Schwachstelle Ghostwrite:                Not affected
+Schwachstelle Indirect target selection: Not affected
+Schwachstelle Itlb multihit:             Not affected
+Schwachstelle L1tf:                      Not affected
+Schwachstelle Mds:                       Not affected
+Schwachstelle Meltdown:                  Not affected
+Schwachstelle Mmio stale data:           Not affected
+Schwachstelle Old microcode:             Not affected
+Schwachstelle Reg file data sampling:    Not affected
+Schwachstelle Retbleed:                  Not affected
+Schwachstelle Spec rstack overflow:      Not affected
+Schwachstelle Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl
+Schwachstelle Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization
+Schwachstelle Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S
+Schwachstelle Srbds:                     Not affected
+Schwachstelle Tsa:                       Not affected
+Schwachstelle Tsx async abort:           Not affected
+Schwachstelle Vmscape:                   Mitigation; IBPB before exit to userspace
+=== RAM ===
+               gesamt       benutzt     frei      gemns.  Puffer/Cache verfügbar
+Speicher:       61Gi       5,5Gi        52Gi       121Mi       4,0Gi        56Gi
+Auslager:       22Gi          0B        22Gi
+=== GPU PCI ===
+=== BLOCK DEVICES ===
+NAME          SIZE TYPE FSTYPE   MOUNTPOINT                          MODEL
+loop0        66,8M loop squashfs /snap/core24/1643                   
+loop1           4K loop squashfs /snap/bare/5                        
+loop2        66,8M loop squashfs /snap/core24/1587                   
+loop3          20M loop squashfs /snap/desktop-security-center/151   
+loop4        19,6M loop squashfs /snap/desktop-security-center/150   
+loop5       273,7M loop squashfs /snap/firefox/8107                  
+loop6        16,5M loop squashfs /snap/firmware-updater/226          
+loop7       606,1M loop squashfs /snap/gnome-46-2404/153             
+loop8        91,7M loop squashfs /snap/gtk-common-themes/1535        
+loop9        10,4M loop squashfs /snap/htop/5913                     
+loop10        395M loop squashfs /snap/mesa-2404/1165                
+loop11       18,8M loop squashfs /snap/prompting-client/204          
+loop12       18,8M loop squashfs /snap/prompting-client/222          
+loop13       15,7M loop squashfs /snap/snap-store/1367               
+loop14        580K loop squashfs /snap/snapd-desktop-integration/361 
+loop15       49,3M loop squashfs /snap/snapd/26865                   
+loop16       63,8M loop squashfs /snap/core20/2866                   
+loop17       55,5M loop squashfs /snap/core18/2999                   
+loop18       94,3M loop squashfs /snap/whatsdesk/37                  
+loop19      164,8M loop squashfs /snap/gnome-3-28-1804/198           
+sda         119,5G disk vfat     /run/media/clemi/63EE-6D04          Flash Drive
+sr0          1024M rom                                               HL-DT-ST DVDRAM GH22NS50
+nvme0n1     931,5G disk                                              KINGSTON SNV2S1000G
+├─nvme0n1p1   100M part vfat     /boot/efi                           
+├─nvme0n1p2    16M part                                              
+├─nvme0n1p3   120G part ntfs                                         
+├─nvme0n1p4   819M part ntfs                                         
+├─nvme0n1p5 198,4G part ntfs                                         
+├─nvme0n1p6  79,5G part ext4     /                                   
+├─nvme0n1p7  22,4G part swap     [SWAP]                              
+├─nvme0n1p8  83,8G part ext4     /home                               
+└─nvme0n1p9 426,5G part ext4     /data                               
+=== EFI MODE ===
+UEFI

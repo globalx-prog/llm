@@ -1,0 +1,7 @@
+=== MOUNTPOINT DIRS ===
+drwxr-xr-x 3 root root 4096 Jun  3 00:28 /mnt/extdisk
+drwxr-xr-x 2 root root 4096 Jun  3 00:28 /mnt/extdisk/knowledge
+drwxr-xr-x 4 root root 4096 Jun  3 00:28 /mnt/nas
+drwxr-xr-x 2 root root 4096 Jun  3 00:28 /mnt/nas/knowledge
+drwxr-xr-x 2 root root 4096 Jun  3 00:28 /mnt/nas/projects
+=== FINDMNT CHECK ===

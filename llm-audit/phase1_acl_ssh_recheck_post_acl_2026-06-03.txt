@@ -1,0 +1,14 @@
+=== RUNSSH ===
+true
+=== TAILSCALE STATUS ===
+100.66.63.118   clemi                       clemi.tail47b116.ts.net  linux    -  
+100.91.209.107  clemens-thinkpad-l15-gen-1  globalx-prog@            linux    -  
+100.99.221.62   s24-von-clemens             globalx-prog@            android  -  
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+=== SELF TAGS ===
+[
+  "tag:llm-server"
+]

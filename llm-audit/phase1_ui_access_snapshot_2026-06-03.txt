@@ -1,0 +1,15 @@
+=== CURRENT UI ACCESS PATH ===
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+https://clemi.tail47b116.ts.net (Funnel on)
+|-- / proxy http://127.0.0.1:3000
+
+=== FUNNEL URL HEAD ===
+HTTP/2 200 
+content-type: text/html; charset=utf-8
+date: Tue, 02 Jun 2026 23:10:07 GMT
+server: SimpleHTTP/0.6 Python/3.14.4
+content-length: 1213
+

@@ -1,0 +1,12 @@
+=== REQUIRED COMMANDS ===
+MISS curl
+OK  jq -> /usr/bin/jq
+MISS rg
+MISS smartctl
+OK  lspci -> /usr/bin/lspci
+OK  lsmod -> /usr/sbin/lsmod
+OK  dmidecode -> /usr/sbin/dmidecode
+OK  findmnt -> /usr/bin/findmnt
+OK  wget -> /usr/bin/wget
+OK  openssl -> /usr/bin/openssl
+OK  dig -> /usr/bin/dig

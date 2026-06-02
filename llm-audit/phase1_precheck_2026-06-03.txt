@@ -1,0 +1,27 @@
+=== BASELINE PRECHECK ===
+Mi 3. Jun 01:00:46 CEST 2026
+Linux clemi 7.0.0-22-generic #22-Ubuntu SMP PREEMPT_DYNAMIC Mon May 25 15:54:34 UTC 2026 x86_64 GNU/Linux
+100.66.63.118   clemi                       clemi.tail47b116.ts.net  linux    -                                                                                 
+100.91.209.107  clemens-thinkpad-l15-gen-1  globalx-prog@            linux    -                                                                                 
+100.99.221.62   s24-von-clemens             globalx-prog@            android  active; direct [2a02:810a:884:2100:9a84:7180:de62:485d]:34622, tx 26864 rx 12504  
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+active
+Status: Aktiv
+Protokollierung: on (low)
+Voreinstellung: deny (eingehend), allow (abgehend), disabled (gesendet)
+Neue Profile: skip
+
+Zu                         Aktion      Von
+--                         ------      ---
+Anywhere on tailscale0     ALLOW IN    Anywhere                  
+Anywhere (v6) on tailscale0 ALLOW IN    Anywhere (v6)             
+
+=== SSH BIN CHECK ===
+/usr/bin/ssh
+=== PACKAGES ===
+fail2ban 1.1.0-9
+ufw 0.36.2-9build1
+unattended-upgrades 2.12ubuntu9

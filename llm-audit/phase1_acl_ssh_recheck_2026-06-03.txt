@@ -1,0 +1,17 @@
+=== RUNSSH ===
+true
+=== TAILSCALE STATUS ===
+100.66.63.118   clemi                       clemi.tail47b116.ts.net  linux    -                        
+100.91.209.107  clemens-thinkpad-l15-gen-1  globalx-prog@            linux    -                        
+100.99.221.62   s24-von-clemens             globalx-prog@            android  idle, tx 27128 rx 12584  
+
+# Health check:
+#     - Tailscale SSH enabled, but access controls don't allow anyone to access this device. Ask your admin to update your tailnet's ACLs to allow access.
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+=== SELF TAGS ===
+[
+  "tag:llm-server"
+]

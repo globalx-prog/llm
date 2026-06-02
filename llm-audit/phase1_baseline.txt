@@ -1,0 +1,8 @@
+=== PACKAGE STATUS ===
+fail2ban 1.1.0-9
+ufw 0.36.2-9build1
+=== TIME SYNC ===
+Timezone=Europe/Berlin
+NTPSynchronized=yes
+TimeUSec=Wed 2026-06-03 00:28:21 CEST
+=== SSH HARDENING KEYS ===

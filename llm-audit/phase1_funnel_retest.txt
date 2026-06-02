@@ -1,0 +1,40 @@
+=== PRECHECK LOCAL SERVICE ===
+nc: connect to 127.0.0.1 port 3000 (tcp) failed: Connection refused
+=== TAILSCALE SERVE/FUNNEL STATUS (BEFORE) ===
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+https://clemi.tail47b116.ts.net (Funnel on)
+|-- / proxy http://127.0.0.1:3000
+
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+https://clemi.tail47b116.ts.net (Funnel on)
+|-- / proxy http://127.0.0.1:3000
+
+=== TRY FUNNEL APPLY ===
+Available on the internet:
+
+https://clemi.tail47b116.ts.net/
+|-- proxy http://127.0.0.1:3000
+
+Funnel started and running in the background.
+To disable the proxy, run: tailscale funnel --https=443 off
+=== STATUS (AFTER APPLY TRY) ===
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+https://clemi.tail47b116.ts.net (Funnel on)
+|-- / proxy http://127.0.0.1:3000
+
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+https://clemi.tail47b116.ts.net (Funnel on)
+|-- / proxy http://127.0.0.1:3000
+

@@ -1,0 +1,4 @@
+=== MOUNT TARGET PATHS ===
+MISS /mnt/nas/knowledge
+MISS /mnt/nas/projects
+MISS /mnt/extdisk/knowledge

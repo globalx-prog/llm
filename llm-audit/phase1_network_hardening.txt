@@ -1,0 +1,25 @@
+=== UFW STATUS ===
+Status: Aktiv
+Protokollierung: on (low)
+Voreinstellung: deny (eingehend), allow (abgehend), disabled (gesendet)
+Neue Profile: skip
+
+Zu                         Aktion      Von
+--                         ------      ---
+Anywhere on tailscale0     ALLOW IN    Anywhere                  
+Anywhere (v6) on tailscale0 ALLOW IN    Anywhere (v6)             
+
+=== FAIL2BAN STATUS ===
+enabled
+active
+=== TAILSCALE HEALTH ===
+100.66.63.118   clemi                       clemi.tail47b116.ts.net  linux    -                                   
+100.91.209.107  clemens-thinkpad-l15-gen-1  globalx-prog@            linux    active; direct 192.168.0.229:41641  
+100.99.221.62   s24-von-clemens             globalx-prog@            android  active; direct 192.168.0.165:37326  
+
+# Health check:
+#     - Tailscale SSH enabled, but access controls don't allow anyone to access this device. Ask your admin to update your tailnet's ACLs to allow access.
+=== CURRENT TAGS (SELF) ===
+[
+  "tag:llm-server"
+]

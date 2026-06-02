@@ -1,0 +1,3 @@
+=== DOCKER CHECK ===
+docker_not_installed
+=== SYSTEMD CANDIDATES ===

@@ -1,0 +1,18 @@
+=== PRECHECK LOCAL 3000 ===
+nc: connect to 127.0.0.1 port 3000 (tcp) failed: Connection refused
+=== APPLY NEW FUNNEL SYNTAX (NO SUDO) ===
+
+Funnel is enabled, but the list of allowed nodes in the tailnet policy file does not include the one you are using.
+To give access to this node you can edit the tailnet policy file, or visit:
+
+         https://login.tailscale.com/f/funnel?node=nC2fdAqT2M11CNTRL
+
+Success.
+sending serve config: Access denied: serve config denied
+
+Use 'sudo tailscale --socket /var/snap/tailscale/common/socket/tailscaled.sock funnel --bg --https=443 http://127.0.0.1:3000'.
+To not require root, use 'sudo tailscale set --operator=$USER' once.
+=== FUNNEL STATUS ===
+No serve config
+=== SERVE STATUS ===
+No serve config

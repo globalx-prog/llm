@@ -1,0 +1,144 @@
+=== GPU PCI ===
+03:00.0 VGA compatible controller: Advanced Micro Devices, Inc. [AMD/ATI] Device 7449
+=== GPU MODULES ===
+amdgpu              21549056  29
+amdxcp                 12288  1 amdgpu
+drm_panel_backlight_quirks    12288  1 amdgpu
+gpu_sched              69632  1 amdgpu
+drm_buddy              28672  1 amdgpu
+drm_ttm_helper         20480  1 amdgpu
+ttm                   135168  2 amdgpu,drm_ttm_helper
+drm_exec               12288  1 amdgpu
+drm_suballoc_helper    24576  1 amdgpu
+drm_display_helper    303104  1 amdgpu
+cec                   106496  2 drm_display_helper,amdgpu
+i2c_algo_bit           16384  1 amdgpu
+video                  77824  2 asus_wmi,amdgpu
+=== ROCMINFO (head 80) ===
+[37mROCk module is loaded[0m
+=====================    
+HSA System Attributes    
+=====================    
+Runtime Version:         1.1
+Runtime Ext Version:     1.14
+System Timestamp Freq.:  1000.000000MHz
+Sig. Max Wait Duration:  18446744073709551615 (0xFFFFFFFFFFFFFFFF) (timestamp count)
+Machine Model:           LARGE                              
+System Endianness:       LITTLE                             
+Mwaitx:                  DISABLED
+XNACK enabled:           NO
+DMAbuf Support:          YES
+VMM Support:             YES
+
+==========               
+HSA Agents               
+==========               
+*******                  
+Agent 1                  
+*******                  
+  Name:                    12th Gen Intel(R) Core(TM) i5-12400F
+  Uuid:                    CPU-XX                             
+  Marketing Name:          12th Gen Intel(R) Core(TM) i5-12400F
+  Vendor Name:             CPU                                
+  Feature:                 None specified                     
+  Profile:                 FULL_PROFILE                       
+  Float Round Mode:        NEAR                               
+  Max Queue Number:        0(0x0)                             
+  Queue Min Size:          0(0x0)                             
+  Queue Max Size:          0(0x0)                             
+  Queue Type:              MULTI                              
+  Node:                    0                                  
+  Device Type:             CPU                                
+  Cache Info:              
+    L1:                      49152(0xc000) KB                   
+  Chip ID:                 0(0x0)                             
+  ASIC Revision:           0(0x0)                             
+  Cacheline Size:          64(0x40)                           
+  Max Clock Freq. (MHz):   5600                               
+  BDFID:                   0                                  
+  Internal Node ID:        0                                  
+  Compute Unit:            12                                 
+  SIMDs per CU:            0                                  
+  Shader Engines:          0                                  
+  Shader Arrs. per Eng.:   0                                  
+  WatchPts on Addr. Ranges:1                                  
+  Memory Properties:       
+  Features:                None
+  Pool Info:               
+    Pool 1                   
+      Segment:                 GLOBAL; FLAGS: FINE GRAINED        
+      Size:                    64597296(0x3d9ad30) KB             
+      Allocatable:             TRUE                               
+      Alloc Granule:           4KB                                
+      Alloc Recommended Granule:4KB                                
+      Alloc Alignment:         4KB                                
+      Accessible by all:       TRUE                               
+    Pool 2                   
+      Segment:                 GLOBAL; FLAGS: EXTENDED FINE GRAINED
+      Size:                    64597296(0x3d9ad30) KB             
+      Allocatable:             TRUE                               
+      Alloc Granule:           4KB                                
+      Alloc Recommended Granule:4KB                                
+      Alloc Alignment:         4KB                                
+      Accessible by all:       TRUE                               
+    Pool 3                   
+      Segment:                 GLOBAL; FLAGS: KERNARG, FINE GRAINED
+      Size:                    64597296(0x3d9ad30) KB             
+      Allocatable:             TRUE                               
+      Alloc Granule:           4KB                                
+      Alloc Recommended Granule:4KB                                
+      Alloc Alignment:         4KB                                
+      Accessible by all:       TRUE                               
+    Pool 4                   
+      Segment:                 GLOBAL; FLAGS: COARSE GRAINED      
+      Size:                    64597296(0x3d9ad30) KB             
+      Allocatable:             TRUE                               
+      Alloc Granule:           4KB                                
+      Alloc Recommended Granule:4KB                                
+=== HIPINFO (head 80) ===
+HIP version: 7.1.52801-9999
+
+==hipconfig
+HIP_PATH           :/usr
+ROCM_PATH          :/usr
+HIP_COMPILER       :clang
+HIP_PLATFORM       :amd
+HIP_RUNTIME        :rocclr
+CPP_CONFIG         : -D__HIP_PLATFORM_HCC__= -D__HIP_PLATFORM_AMD__= -I/usr/include -I/include
+
+==hip-clang
+HIP_CLANG_PATH     :/usr/lib/rocm/llvm/bin
+clang version 20.0.0rocm7.1.0
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/rocm/llvm/bin
+AOMP-18.0-12 (http://github.com/ROCm-Developer-Tools/aomp):
+ Source ID:18.0-12-ce1873ac686bb90ddec72bb99889a4e80e2de382
+  LLVM version 20.0.0rocm7.1.0
+  Optimized build.
+  Default target: x86_64-gnu-linux
+  Host CPU: alderlake
+
+  Registered Targets:
+    amdgcn - AMD GCN GPUs
+    r600   - AMD GPUs HD2XXX-HD6XXX
+    x86    - 32-bit X86: Pentium-Pro and above
+    x86-64 - 64-bit X86: EM64T and AMD64
+hip-clang-cxxflags :
+ -O3
+hip-clang-ldflags :
+--driver-mode=g++ -O3 --hip-link
+
+== Environment Variables
+PATH =/home/clemi/.config/Code/User/globalStorage/github.copilot-chat/debugCommand:/home/clemi/.config/Code/User/globalStorage/github.copilot-chat/copilotCli:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin
+
+== Linux Kernel
+Hostname      :
+clemi
+Linux clemi 7.0.0-22-generic #22-Ubuntu SMP PREEMPT_DYNAMIC Mon May 25 15:54:34 UTC 2026 x86_64 GNU/Linux
+Distributor ID:	Ubuntu
+Description:	Ubuntu 26.04 LTS
+Release:	26.04
+Codename:	resolute
+
+=== DMESG GPU TAIL ===

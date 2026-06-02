@@ -1,0 +1,8 @@
+=== MOUNTS ===
+MISS /mnt/nas/knowledge
+MISS /mnt/nas/projects
+MISS /mnt/extdisk/knowledge
+=== /DATA ===
+TARGET SOURCE         FSTYPE OPTIONS
+/data  /dev/nvme0n1p9 ext4   rw,relatime
+drwxr-xr-x 9 root root 4096 Jun  2 23:31 /data

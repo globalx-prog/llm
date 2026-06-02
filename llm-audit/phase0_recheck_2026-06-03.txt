@@ -1,0 +1,58 @@
+=== DATE ===
+Mi 3. Jun 00:44:06 CEST 2026
+=== PHASE 0 VPN-FIRST RECHECK ===
+--- tailscale status ---
+100.66.63.118   clemi                       clemi.tail47b116.ts.net  linux    -                      
+100.91.209.107  clemens-thinkpad-l15-gen-1  globalx-prog@            linux    -                      
+100.99.221.62   s24-von-clemens             globalx-prog@            android  idle, tx 1168 rx 1448  
+
+# Health check:
+#     - Tailscale SSH enabled, but access controls don't allow anyone to access this device. Ask your admin to update your tailnet's ACLs to allow access.
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+--- tailscale ip ---
+100.66.63.118
+fd7a:115c:a1e0::32:3f76
+--- magicdns ---
+clemi.tail47b116.ts.net.
+--- runssh ---
+true
+=== STORAGE/MOUNTS ===
+TARGET SOURCE         FSTYPE OPTIONS
+/data  /dev/nvme0n1p9 ext4   rw,relatime
+DIR /mnt/nas/knowledge
+DIR /mnt/nas/projects
+DIR /mnt/extdisk/knowledge
+=== SERVICE REACHABILITY ===
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0
+HTTP/1.0 200 OK
+Server: SimpleHTTP/0.6 Python/3.14.4
+Date: Tue, 02 Jun 2026 22:44:06 GMT
+Content-type: text/html; charset=utf-8
+Content-Length: 330
+
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0
+HTTP/2 200 
+content-type: text/html; charset=utf-8
+date: Tue, 02 Jun 2026 22:44:06 GMT
+server: SimpleHTTP/0.6 Python/3.14.4
+content-length: 330
+
+=== SECURITY BASELINE ===
+Status: Aktiv
+Protokollierung: on (low)
+Voreinstellung: deny (eingehend), allow (abgehend), disabled (gesendet)
+Neue Profile: skip
+
+Zu                         Aktion      Von
+--                         ------      ---
+Anywhere on tailscale0     ALLOW IN    Anywhere                  
+Anywhere (v6) on tailscale0 ALLOW IN    Anywhere (v6)             
+
+active

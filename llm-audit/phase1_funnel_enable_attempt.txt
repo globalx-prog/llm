@@ -1,0 +1,16 @@
+=== DATE ===
+Mi 3. Jun 00:30:50 CEST 2026
+=== PRECHECK LOCAL 3000 ===
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0
+curl: (7) Failed to connect to 127.0.0.1 port 3000 after 0 ms: Could not connect to server
+=== CURRENT SERVE STATUS (BEFORE) ===
+No serve config
+=== APPLY SERVE (HTTPS 443 -> 127.0.0.1:3000) ===
+
+Serve is not enabled on your tailnet.
+To enable, visit:
+
+         https://login.tailscale.com/f/serve?node=nC2fdAqT2M11CNTRL
+

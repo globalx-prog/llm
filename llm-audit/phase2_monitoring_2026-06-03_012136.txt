@@ -1,0 +1,24 @@
+=== MONITORING CHECK ===
+Mi 3. Jun 01:21:36 CEST 2026
+{
+  "ok": true,
+  "service": "phase2-router",
+  "models": [
+    "quality",
+    "fast"
+  ],
+  "default_model": "fast",
+  "timeout_s": 2.0,
+  "concurrency_limit": 12,
+  "monitoring": {
+    "enabled": true,
+    "requests_total": 0,
+    "throughput_rps": 0.0,
+    "latency_avg_ms": 0.0
+  }
+}
+
+"# HELP llm_router_requests_total Total requests processed by router\n# TYPE llm_router_requests_total counter\nllm_router_requests_total 0\n# HELP llm_router_requests_success_total Successful requests\n# TYPE llm_router_requests_success_total counter\nllm_router_requests_success_total 0\n# HELP llm_router_requests_error_total Failed requests\n# TYPE llm_router_requests_error_total counter\nllm_router_requests_error_total 0\n# HELP llm_router_fallback_total Fallback activations\n# TYPE llm_router_fallback_total counter\nllm_router_fallback_total 0\n# HELP llm_router_latency_avg_ms Average end-to-end latency in ms\n# TYPE llm_router_latency_avg_ms gauge\nllm_router_latency_avg_ms 0.0\n# HELP llm_router_latency_max_ms Max observed latency in ms\n# TYPE llm_router_latency_max_ms gauge\nllm_router_latency_max_ms 0\n# HELP llm_router_throughput_rps Average requests per second since start\n# TYPE llm_router_throughput_rps gauge\nllm_router_throughput_rps 0.0\n# HELP llm_router_uptime_seconds Router process uptime in seconds\n# TYPE llm_router_uptime_seconds gauge\nllm_router_uptime_seconds 6\n"
+=== GENERATE TRAFFIC ===
+=== METRICS AFTER TRAFFIC ===
+"# HELP llm_router_requests_total Total requests processed by router\n# TYPE llm_router_requests_total counter\nllm_router_requests_total 10\n# HELP llm_router_requests_success_total Successful requests\n# TYPE llm_router_requests_success_total counter\nllm_router_requests_success_total 10\n# HELP llm_router_requests_error_total Failed requests\n# TYPE llm_router_requests_error_total counter\nllm_router_requests_error_total 0\n# HELP llm_router_fallback_total Fallback activations\n# TYPE llm_router_fallback_total counter\nllm_router_fallback_total 0\n# HELP llm_router_latency_avg_ms Average end-to-end latency in ms\n# TYPE llm_router_latency_avg_ms gauge\nllm_router_latency_avg_ms 92.4\n# HELP llm_router_latency_max_ms Max observed latency in ms\n# TYPE llm_router_latency_max_ms gauge\nllm_router_latency_max_ms 103\n# HELP llm_router_throughput_rps Average requests per second since start\n# TYPE llm_router_throughput_rps gauge\nllm_router_throughput_rps 1.503\n# HELP llm_router_uptime_seconds Router process uptime in seconds\n# TYPE llm_router_uptime_seconds gauge\nllm_router_uptime_seconds 6\nllm_router_model_success_total{model=\"fast\"} 10\n"

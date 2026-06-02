@@ -1,0 +1,40 @@
+=== DATE ===
+Mi 3. Jun 00:43:57 CEST 2026
+=== START LOCAL WEBUI PLACEHOLDER ON 3000 ===
+PID: 37949
+=== LOCAL 3000 CHECK ===
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0
+HTTP/1.0 200 OK
+Server: SimpleHTTP/0.6 Python/3.14.4
+Date: Tue, 02 Jun 2026 22:43:58 GMT
+Content-type: text/html; charset=utf-8
+Content-Length: 330
+
+=== APPLY FUNNEL TARGET 3000 ===
+Available on the internet:
+
+https://clemi.tail47b116.ts.net/
+|-- proxy http://127.0.0.1:3000
+
+Funnel started and running in the background.
+To disable the proxy, run: tailscale funnel --https=443 off
+=== FUNNEL STATUS ===
+
+# Funnel on:
+#     - https://clemi.tail47b116.ts.net
+
+https://clemi.tail47b116.ts.net (Funnel on)
+|-- / proxy http://127.0.0.1:3000
+
+=== FUNNEL URL CHECK ===
+  % Total    % Received % Xferd  Average Speed  Time    Time    Time   Current
+                                 Dload  Upload  Total   Spent   Left   Speed
+  0      0   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0  0    330   0      0   0      0      0      0                              0
+HTTP/2 200 
+content-type: text/html; charset=utf-8
+date: Tue, 02 Jun 2026 22:43:58 GMT
+server: SimpleHTTP/0.6 Python/3.14.4
+content-length: 330
+

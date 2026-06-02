@@ -1,0 +1,22 @@
+=== DATE ===
+Mi 3. Jun 00:28:11 CEST 2026
+=== TAILSCALE STATUS ===
+100.66.63.118   clemi                       clemi.tail47b116.ts.net  linux    -  
+100.91.209.107  clemens-thinkpad-l15-gen-1  globalx-prog@            linux    -  
+100.99.221.62   s24-von-clemens             globalx-prog@            android  -  
+
+# Health check:
+#     - Tailscale SSH enabled, but access controls don't allow anyone to access this device. Ask your admin to update your tailnet's ACLs to allow access.
+=== TAILSCALE IPS ===
+100.66.63.118
+fd7a:115c:a1e0::32:3f76
+=== MAGICDNS ===
+clemi.tail47b116.ts.net.
+=== PEER PING THINKPAD ===
+pong from clemens-thinkpad-l15-gen-1 (100.91.209.107) via [2a02:810a:884:2100::aeb8]:41641 in 77ms
+=== PEER PING ANDROID ===
+pong from s24-von-clemens (100.99.221.62) via DERP(fra) in 224ms
+pong from s24-von-clemens (100.99.221.62) via DERP(fra) in 630ms
+pong from s24-von-clemens (100.99.221.62) via 192.168.0.165:37326 in 176ms
+=== SSH MODE ===
+true
