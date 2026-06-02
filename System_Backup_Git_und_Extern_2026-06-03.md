@@ -7,6 +7,18 @@ Den gesamten Serverzustand reproduzierbar sichern:
 - Konfigurationen und IaC in Git
 - Daten und Systemabbild auf externer Festplatte
 
+## Wichtige Klarstellung
+Nein: Diese Markdown-Datei allein ist nicht direkt ausfuehrbar und stellt den Server nicht automatisch 1:1 wieder her.
+
+Mit den enthaltenen Befehlen erreichst du eine sehr gute reproduzierbare Wiederherstellung von:
+- Projektdaten
+- Konfigurationen
+- Service-Definitionen
+- Paketlisten
+
+Fuer einen wirklich identischen 1:1 Zustand (inkl. Partitionierung, Bootloader, UUIDs, exakte Systemmetadaten)
+brauchst du zusaetzlich ein Block-Image-Backup (z. B. Clonezilla oder Relax-and-Recover).
+
 ## 1) Was in Git gehoert
 - Infrastruktur- und Service-Konfigurationen (`/etc/systemd/system`, Reverse Proxy, UFW-Regeln als Export)
 - Projektcode und Dokumentation (`/home/clemi/projekte/LLM`)
@@ -36,14 +48,22 @@ TS=$(date +%F_%H%M%S)
 DEST=/mnt/extdisk/backups/server/$TS
 sudo mkdir -p "$DEST"
 
+# Basis-System ohne volatile Mounts und ohne separat gesicherte Datenpfade
 sudo rsync -aHAX --delete \
   --exclude='/proc/*' --exclude='/sys/*' --exclude='/dev/*' \
   --exclude='/run/*' --exclude='/tmp/*' --exclude='/mnt/*' \
+  --exclude='/home/*' --exclude='/data/*' \
   --exclude='/media/*' --exclude='/lost+found' \
   / "$DEST/rootfs"
 
+# Explizite Datenpfade
 sudo rsync -aHAX /home/clemi/projekte/ "$DEST/projekte"
 sudo rsync -aHAX /data/ "$DEST/data"
+
+# Kritische Systemkonfiguration separat
+sudo rsync -aHAX /etc/ "$DEST/etc"
+sudo rsync -aHAX /var/lib/ "$DEST/var_lib"
+sudo rsync -aHAX /usr/local/ "$DEST/usr_local"
 ```
 
 ## 4) Git-Only fuer Infrastruktur
@@ -61,7 +81,35 @@ git push
 - Daten aus externem Backup mit rsync zurueckspielen
 - Services starten und Healthchecks pruefen
 
-## 6) Empfehlung fuer Betrieb
+### Wiederherstellung (konkret, nach Neuinstallation)
+```bash
+# 1) Grundsystem angleichen
+sudo apt update
+sudo xargs -a /pfad/zum/backup/apt_manual_YYYY-MM-DD_HHMMSS.txt apt install -y
+
+# 2) Daten und Konfigurationen zurueckspielen
+sudo rsync -aHAX /pfad/zum/backup/projekte/ /home/clemi/projekte/
+sudo rsync -aHAX /pfad/zum/backup/data/ /data/
+sudo rsync -aHAX /pfad/zum/backup/etc/ /etc/
+sudo rsync -aHAX /pfad/zum/backup/var_lib/ /var/lib/
+sudo rsync -aHAX /pfad/zum/backup/usr_local/ /usr/local/
+
+# 3) Dienste neu laden und starten
+sudo systemctl daemon-reload
+sudo systemctl enable --now llm-router.service llm-rag-api.service llm-model-fast.service llm-model-quality.service
+```
+
+Hinweis: Secrets/Schluessel (SSH, TLS, Tokens) bewusst getrennt und sicher sichern. Nicht unverschluesselt in Git ablegen.
+
+## 6) Wenn du wirklich 1:1 willst (inkl. Boot/Partition)
+Nutze zusaetzlich ein Image-Backup des kompletten Datentraegers.
+
+Beispiel mit Clonezilla:
+- Vollabbild auf externe Festplatte erstellen
+- Regelmaessig inkrementelle Dateibackups (oben) weiterfahren
+- Restore-Test auf Ersatzsystem durchfuehren
+
+## 7) Empfehlung fuer Betrieb
 - Taeglich inkrementelles rsync-Backup per systemd timer
 - Woechentlich Restore-Test auf Testsystem
 - Monatlich Vollsicherung und Hash-Pruefung
