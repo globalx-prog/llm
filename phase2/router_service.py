@@ -26,7 +26,7 @@ def _load_config(path: str) -> dict[str, Any]:
 CFG = _load_config(CONFIG_PATH)
 MASTER_KEY = str(CFG.get("master_key", "change_me"))
 MODELS = dict(CFG.get("models", {}))
-DEFAULT_MODEL = str(CFG.get("default_model", "gemma4"))
+DEFAULT_MODEL = str(CFG.get("default_model", "gemma2-2b"))
 FALLBACKS = dict(CFG.get("fallbacks", {}))
 ROLE_TOKEN_LIMITS = dict(CFG.get("role_token_limits", {"viewer": 800, "admin": 4000}))
 GLOBAL_MAX_TOKENS = int(CFG.get("global_max_tokens", 4096))
@@ -121,11 +121,15 @@ def _snapshot_metrics() -> dict[str, Any]:
     }
 
 
-def _resolve_route(requested_model: str | None) -> tuple[str, str]:
+def _resolve_route(requested_model: str | None) -> tuple[str, str, str]:
     model_name = requested_model or DEFAULT_MODEL
     if model_name in MODELS:
-        return model_name, str(MODELS[model_name]["api_base"])
-    return DEFAULT_MODEL, str(MODELS[DEFAULT_MODEL]["api_base"])
+        cfg = MODELS[model_name]
+        backend_model = str(cfg.get("backend_model", model_name))
+        return model_name, str(cfg["api_base"]), backend_model
+    cfg = MODELS[DEFAULT_MODEL]
+    backend_model = str(cfg.get("backend_model", DEFAULT_MODEL))
+    return DEFAULT_MODEL, str(cfg["api_base"]), backend_model
 
 
 async def _forward(base_url: str, body: dict[str, Any]) -> tuple[dict[str, Any], int]:
@@ -259,7 +263,8 @@ async def chat(
 
     body = req.model_dump()
     requested_model = req.model
-    selected_model, api_base = _resolve_route(requested_model)
+    selected_model, api_base, backend_model = _resolve_route(requested_model)
+    body["model"] = backend_model
     fallback_chain = list(FALLBACKS.get(selected_model, []))
 
     async with sem:

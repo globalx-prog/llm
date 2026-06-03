@@ -9,7 +9,7 @@
       --ink: #102131;
       --paper: #f4f1e7;
       --panel: #fffdf8;
-      --gemma4: #4a5eb8;
+      --gemma2: #4a5eb8;
     }
     * { box-sizing: border-box; }
     body {
@@ -38,7 +38,7 @@
       padding-left: .8rem;
       margin-top: .8rem;
     }
-    .model.gemma4 { border-left-color: var(--gemma4); }
+    .model.gemma2 { border-left-color: var(--gemma2); }
     .mono {
       display: inline-block;
       background: #f5f7fa;
@@ -54,16 +54,17 @@
 <body>
   <main>
     <section class="card">
-      <h1>Gemma 4 Modellprofil</h1>
+      <h1>Gemma2 2B Modellprofil</h1>
       <p class="sub">Diese Seite beschreibt das aktuell im Stack aktivierte Modellprofil.</p>
 
-      <article id="gemma4" class="model gemma4">
-        <h2>Gemma 4</h2>
-        <p>Analyselastiges Profil fuer tiefere Antworten und strukturierte Ausarbeitung. Im aktuellen Stack als OpenAI-kompatibles Profil `gemma4` (Modelltyp `gemma-4`) integriert.</p>
+      <article id="gemma2-2b" class="model gemma2">
+        <h2>Gemma2 2B</h2>
+        <p>Reales Gemma-Serving ueber Ollama. Im aktuellen Stack als OpenAI-kompatibles Profil `gemma2-2b` integriert.</p>
         <ul>
-          <li>Backend-Ziel: <span class="mono">127.0.0.1:8002</span></li>
-          <li>Profil: <span class="mono">gemma4</span></li>
-          <li>Parameterzahl: <span class="mono">27B</span></li>
+          <li>Backend-Ziel: <span class="mono">127.0.0.1:11434 (Ollama)</span></li>
+          <li>Profil: <span class="mono">gemma2-2b</span></li>
+          <li>Backend-Modell: <span class="mono">gemma2:2b</span></li>
+          <li>Parameterzahl: <span class="mono">2.6B</span></li>
           <li>Fallback: deaktiviert (single-model Betrieb)</li>
         </ul>
       </article>

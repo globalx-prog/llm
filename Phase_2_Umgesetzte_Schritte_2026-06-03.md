@@ -7,11 +7,11 @@ Dieses Dokument fasst die heute tatsaechlich umgesetzten Schritte aus Phase 2 zu
 - Python-Venv fuer Phase 2 bereitgestellt unter `LLM/.venvs/phase2`.
 - Laufzeitbibliotheken installiert: `fastapi`, `uvicorn`, `httpx`, `pyyaml`.
 - Datenpfade bereitgestellt:
-  - `/data/models/gemma4-model`
+  - `/data/models/gemma2-2b`
   - `/data/litellm`
 
 ## 2) Modellserver gestartet
-- Gemma4-Modellservice auf `127.0.0.1:8002` bereitgestellt.
+- Gemma2-2B Modell ueber Ollama auf `127.0.0.1:11434` bereitgestellt.
 - Endpunkt liefert OpenAI-kompatible Antworten und Healthchecks.
 
 ## 3) Router bereitgestellt
@@ -22,7 +22,7 @@ Dieses Dokument fasst die heute tatsaechlich umgesetzten Schritte aus Phase 2 zu
 - Sicherheits- und Guard-Regeln:
   - API-Key-Pflicht (`Authorization: Bearer ...`)
   - Rollenbasierte Tokenlimits (`viewer`, `admin`)
-  - Single-Model Routing (`gemma4`)
+  - Single-Model Routing (`gemma2-2b`)
 - Einheitliches Fehlerobjekt mit `type`, `code`, `message`, `details`.
 
 ## 4) Punkt 1 umgesetzt: Monitoring fuer Latenz und Throughput aktiv
@@ -36,7 +36,7 @@ Dieses Dokument fasst die heute tatsaechlich umgesetzten Schritte aus Phase 2 zu
 
 ## 5) Betrieb als Services
 Folgende Services sind aktiv:
-- `llm-model-gemma4.service`
+- `snap.ollama.ollama.service`
 - `llm-router.service`
 
 ## 6) Nachweise

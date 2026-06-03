@@ -125,7 +125,7 @@ input:focus, select:focus, textarea:focus {
   border-bottom: 1px solid #0f5f7f55;
 }
 .modelLink:hover { filter: brightness(1.1); }
-.modelInfo.gemma4 { border-left-color: #4a5eb8; }
+.modelInfo.gemma2 { border-left-color: #4a5eb8; }
 
 .messages {
   min-height: 420px;

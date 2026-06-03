@@ -6,9 +6,9 @@
 
 ## Sofortmassnahmen (0-15 Minuten)
 1. Pruefe Dienste:
-   - `systemctl status llm-router llm-rag-api llm-model-gemma4`
+   - `systemctl status llm-router llm-rag-api snap.ollama.ollama.service`
 2. Pruefe Ports:
-   - `ss -ltnp | rg ':4000|:4100|:4173|:8002'`
+   - `ss -ltnp | rg ':4000|:4100|:4173|:11434'`
 3. Pruefe Health:
    - `curl -fsS http://127.0.0.1:4000/healthz`
    - `curl -fsS http://127.0.0.1:4100/healthz`

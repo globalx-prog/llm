@@ -6,7 +6,7 @@ Dieses Dokument listet die bisher im Rahmen der Umsetzung angelegten oder genutz
 
 ## Systemd-Service-Dateien
 - /etc/systemd/system/llm-web-placeholder.service
-- /etc/systemd/system/llm-model-gemma4.service
+- snap.ollama.ollama.service (Snap-Service)
 - /etc/systemd/system/llm-router.service
 
 ## Konfigurationsdateien

@@ -1,15 +1,16 @@
 master_key: change_me_phase2
 models:
-  gemma4:
-    api_base: http://127.0.0.1:8002/v1
-    profile: gemma4
-    model_type: gemma-4
-    parameter_count_b: 27
-default_model: gemma4
+  gemma2-2b:
+    api_base: http://127.0.0.1:11434/v1
+    profile: gemma2-2b
+    backend_model: gemma2:2b
+    model_type: gemma2
+    parameter_count_b: 2.6
+default_model: gemma2-2b
 fallbacks: {}
 role_token_limits:
   viewer: 800
   admin: 4000
 global_max_tokens: 4096
-request_timeout_s: 2.0
+request_timeout_s: 120.0
 concurrency_limit: 12

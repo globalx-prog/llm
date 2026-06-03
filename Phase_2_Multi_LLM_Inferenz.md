@@ -6,13 +6,13 @@ Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzba
 ## Umsetzungsstand (2026-06-03)
 - Native Services statt Container umgesetzt.
 - Modell-Endpunkte aktiv:
-  - gemma4 auf `127.0.0.1:8002`
+  - gemma2-2b auf `127.0.0.1:11434` (Ollama)
 - Router-Endpunkt aktiv auf `127.0.0.1:4000` mit OpenAI-kompatiblen Routen:
   - `GET /v1/models`
   - `POST /v1/chat/completions`
 - API-Key-Regel aktiv (`Authorization: Bearer change_me_phase2`).
 - Rollenbasierte Tokenlimits aktiv (`viewer: 800`, `admin: 4000`).
-- Single-Model Betrieb aktiv: `gemma4`.
+- Single-Model Betrieb aktiv: `gemma2-2b`.
 
 ## Wichtige Abweichung (LiteLLM)
 - LiteLLM konnte in dieser Umgebung nicht stabil installiert werden, da die Abhaengigkeit `orjson` in der aufgeloesten Version auf Python 3.14 nicht baute (PyO3-Versionlimit).
@@ -25,7 +25,7 @@ Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzba
 - Modellspeicher unter /data/models bereitstellen.
 
 2. Modellserver starten
-- Modellprofil gemma4 auf Port 8002.
+- Modellprofil gemma2-2b ueber Ollama auf Port 11434.
 - Optional spaeter weitere Profile ergaenzen.
 
 3. LiteLLM als Router
@@ -39,12 +39,12 @@ Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzba
 
 5. UI-relevante API-Standards
 - Einheitliche Fehlercodes und Fehlermeldungen fuer Frontend-Anzeige.
-- Modellmetadaten (Profil gemma4, Limits, Verfuegbarkeit) maschinenlesbar bereitstellen.
+- Modellmetadaten (Profil gemma2-2b, Limits, Verfuegbarkeit) maschinenlesbar bereitstellen.
 - Antwortmetadaten fuer UI ausgeben (Latenz, Modellname, Tokenverbrauch).
 
 ## DoD
-- [x] Modellprofil gemma4 liefert reproduzierbare Antworten.
-- [x] Router routet korrekt auf gemma4.
+- [x] Modellprofil gemma2-2b liefert reproduzierbare Antworten.
+- [x] Router routet korrekt auf gemma2-2b.
 - [x] Lasttest mit parallelen Requests bestanden.
 - [x] Fehlerpfade sind konsistent abgebildet.
 - [x] Frontend kann Fehlermeldungen und Metadaten konsistent darstellen.
@@ -66,7 +66,7 @@ Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzba
   - `LLM/phase2/router_service.py`
   - `LLM/phase2/phase2-router-config.yaml`
 - Systemd:
-  - `llm-model-gemma4.service`
+  - `snap.ollama.ollama.service`
   - `llm-router.service`
 
 ## Konkrete Umsetzung (Beispiele)
@@ -82,7 +82,7 @@ sudo apt update && sudo apt -y install k6
 
 1. Modellpfade vorbereiten
 ```bash
-sudo mkdir -p /data/models/gemma4-model /data/litellm
+sudo mkdir -p /data/models/gemma2-2b /data/litellm
 sudo chown -R $USER:$USER /data/models /data/litellm
 ```
 
@@ -90,10 +90,10 @@ sudo chown -R $USER:$USER /data/models /data/litellm
 ```yaml
 # /data/litellm/config.yaml
 model_list:
-  - model_name: gemma4
+  - model_name: gemma2-2b
     litellm_params:
-      model: openai/gemma4
-      api_base: http://vllm_gemma4:8002/v1
+      model: openai/gemma2:2b
+      api_base: http://127.0.0.1:11434/v1
       api_key: dummy
 general_settings:
   master_key: change_me
@@ -108,7 +108,7 @@ curl -s https://nas-clemens.de/v1/chat/completions \
   -H "Authorization: Bearer change_me" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gemma4",
+    "model": "gemma2-2b",
     "messages": [{"role": "user", "content": "Antworte mit ok"}],
     "temperature": 0
   }' | jq .
@@ -122,7 +122,7 @@ import { check } from 'k6';
 export const options = { vus: 10, duration: '1m' };
 export default function () {
   const payload = JSON.stringify({
-    model: 'gemma4',
+    model: 'gemma2-2b',
     messages: [{ role: 'user', content: 'ping' }]
   });
   const res = http.post('https://nas-clemens.de/v1/chat/completions', payload, {

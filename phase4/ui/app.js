@@ -11,18 +11,18 @@ const HISTORY_KEY = 'llm-controldeck-history-v1';
 const CHAT_HISTORY_KEY = 'llm-controldeck-chat-history-v1';
 
 const MODEL_PROFILES = {
-  gemma4: {
-    css: 'gemma4',
+  'gemma2-2b': {
+    css: 'gemma2',
     description:
-      'Gemma 4 (gemma-4, 27B Parameter): analyselastiges Profil fuer tieferes Reasoning mit hoeherer Latenz. Backend-Profil gemma4 (Port 8002).',
+      'Gemma2 2B (Modelltyp gemma2, 2.6B Parameter): reales Serving ueber Ollama, gut fuer robuste lokale Inferenz bei moderatem Ressourcenbedarf.',
   },
 };
 
 function updateModelInfo() {
   const current = el('modelInput').value;
-  const profile = MODEL_PROFILES[current] || MODEL_PROFILES.gemma4;
+  const profile = MODEL_PROFILES[current] || MODEL_PROFILES['gemma2-2b'];
   const box = el('modelInfo');
-  box.classList.remove('gemma4');
+  box.classList.remove('gemma2');
   box.classList.add(profile.css);
   el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.`;
   el('modelExplainLink').href = `modelle.html#${current}`;

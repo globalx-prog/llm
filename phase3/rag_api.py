@@ -36,7 +36,7 @@ class SearchRequest(BaseModel):
 
 class AnswerRequest(BaseModel):
     query: str
-    model: str = "gemma4"
+    model: str = "gemma2-2b"
     top_k: int = 5
     project: str | None = None
 
