@@ -1,8 +1,12 @@
-const API_BASE = window.LLM_API_BASE || (
-  window.location.protocol === 'https:'
-    ? `${window.location.origin}/api`
-    : `${window.location.protocol}//${window.location.hostname}:4100`
-);
+const API_BASE = window.LLM_API_BASE || (() => {
+  if (window.location.protocol === 'https:') {
+    return `${window.location.origin}/api`;
+  }
+  if (window.location.protocol === 'file:') {
+    return 'http://127.0.0.1:4100';
+  }
+  return `${window.location.protocol}//${window.location.hostname}:4100`;
+})();
 
 const el = (id) => document.getElementById(id);
 
@@ -11,6 +15,7 @@ const state = {
   users: [],
   workspaces: [],
   activeWorkspaceId: null,
+  modelStatus: {},
   audit: [],
   history: [],
   chats: {},
@@ -37,6 +42,7 @@ const PROJECT_STRUCTURE = {
     'Phase_4_Weboberflaeche_und_Projektkontexte.md',
     'Phase_5_Agenten_und_Dateibearbeitung.md',
     'Phase_6_Betrieb_Backup_Governance.md',
+    'Phase_7_Smoketests_und_Modellverfuegbarkeit.md',
     {
       name: 'phase2/',
       children: ['phase2-router-config.yaml', 'router_service.py'],
@@ -100,6 +106,24 @@ const MODEL_PROFILES = {
     description:
       'Mistral 7B (Modelltyp mistral, 7B Parameter): leichtes universelles Modell fuer schnelle Iterationen und kompakte Antworten.',
   },
+};
+
+const MODEL_BACKEND_TAGS = {
+  'gemma2-2b': 'gemma2:2b',
+  'gemma3-27b': 'gemma3:27b',
+  'llama3.3-70b': 'llama3.3:70b',
+  'deepseek-r1-32b': 'deepseek-r1:32b',
+  'deepseek-coder-16b': 'deepseek-coder:16b',
+  'mistral-7b': 'mistral:7b',
+};
+
+const MODEL_ALTERNATIVES = {
+  'llama3.3-70b': ['gemma3-27b', 'gemma2-2b'],
+  'deepseek-r1-32b': ['gemma3-27b', 'mistral-7b'],
+  'deepseek-coder-16b': ['gemma2-2b', 'mistral-7b'],
+  'mistral-7b': ['gemma2-2b', 'gemma3-27b'],
+  'gemma3-27b': ['gemma2-2b', 'mistral-7b'],
+  'gemma2-2b': ['gemma3-27b', 'mistral-7b'],
 };
 
 const AGENT_MODES = {
@@ -494,9 +518,281 @@ function updateModelInfo() {
   const box = el('modelInfo');
   box.classList.remove('gemma2', 'gemma3', 'llama33', 'deepseekr1', 'deepseekcoder', 'mistral7b');
   box.classList.add(profile.css);
-  el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.`;
+  const status = state.modelStatus[current];
+  const statusHint = status?.ok
+    ? ' Verfuegbarkeit: nutzbar.'
+    : (status && status.ok === false)
+      ? ` Verfuegbarkeit: aktuell nicht nutzbar (${status.reason || 'kein Modell-Response'}).`
+      : ' Verfuegbarkeit: noch nicht geprueft.';
+  el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.${statusHint}`;
   el('modelExplainLink').href = `modelle.html#${current}`;
   el('modelExplainLink').textContent = `Was bedeutet ${profile.label}?`;
+  setModelInputHealth(current);
+}
+
+function setModelInputHealth(model) {
+  const select = el('modelInput');
+  if (!select) return;
+  select.classList.add('modelSelectable');
+  select.classList.remove('modelOk', 'modelWarn');
+  const status = state.modelStatus[model];
+  if (status?.ok === true) {
+    select.classList.add('modelOk');
+  } else if (status?.ok === false) {
+    select.classList.add('modelWarn');
+  }
+}
+
+function modelLabel(model) {
+  return MODEL_PROFILES[model]?.label || model;
+}
+
+function bestAvailableAlternative(model) {
+  const candidates = MODEL_ALTERNATIVES[model] || [];
+  const available = candidates.find((cand) => state.modelStatus[cand]?.ok === true);
+  return available || candidates[0] || null;
+}
+
+function renderModelHealth() {
+  const ul = el('modelHealthList');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  Object.keys(MODEL_PROFILES).forEach((model) => {
+    const li = document.createElement('li');
+    const backend = MODEL_BACKEND_TAGS[model] || '-';
+    const status = state.modelStatus[model];
+    if (!status) {
+      li.className = 'healthInfo';
+      li.textContent = `PRUEFUNG AUSSTEHEND | ${modelLabel(model)} | Backend ${backend}`;
+      ul.appendChild(li);
+      return;
+    }
+
+    if (status.ok) {
+      li.className = 'healthOk';
+      li.textContent = `NUTZBAR | ${modelLabel(model)} | Backend ${backend}`;
+      ul.appendChild(li);
+      return;
+    }
+
+    li.className = 'healthWarn';
+    const alt = bestAvailableAlternative(model);
+    const altText = alt ? ` | Alternative: ${modelLabel(alt)}` : '';
+    li.textContent = `NICHT NUTZBAR | ${modelLabel(model)} | Backend ${backend} | Grund: ${status.reason || 'kein Modell-Response'}${altText}`;
+    ul.appendChild(li);
+  });
+}
+
+async function probeModel(model) {
+  try {
+    const fallbackUser = normalizeUser(el('userInput')?.value || 'clemi') || 'clemi';
+    const headers = { 'Content-Type': 'application/json', ...authHeaders() };
+    if (!headers['X-User']) headers['X-User'] = fallbackUser;
+    if (!headers['X-Role']) headers['X-Role'] = 'admin';
+
+    const data = await requestJson(`${API_BASE}/v1/rag/answer`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        query: 'Antworte nur mit OK.',
+        model,
+        project: (el('projectInput')?.value || 'mim-llm').trim() || 'mim-llm',
+        top_k: 1,
+      }),
+    });
+
+    const answer = String(data?.answer || '').trim();
+    if (!answer || answer === 'Keine Antwort vom Modell erhalten.') {
+      return { ok: false, reason: 'keine Modellantwort' };
+    }
+    return { ok: true, reason: '' };
+  } catch (err) {
+    return { ok: false, reason: String(err) };
+  }
+}
+
+async function checkModelsAvailability() {
+  setStatus('Pruefe Modellverfuegbarkeit...');
+  const models = Object.keys(MODEL_PROFILES);
+  for (const model of models) {
+    state.modelStatus[model] = await probeModel(model);
+    renderModelHealth();
+    if (el('modelInput').value === model) {
+      setModelInputHealth(model);
+      updateModelInfo();
+    }
+  }
+
+  const okCount = models.filter((m) => state.modelStatus[m]?.ok).length;
+  const badCount = models.length - okCount;
+  setStatus(`Modellcheck abgeschlossen: ${okCount} nutzbar, ${badCount} nicht nutzbar.`);
+  addAudit('model_check', `ok=${okCount}, failed=${badCount}`);
+}
+
+function renderSmokeTestResults(results) {
+  const ul = el('smokeTestList');
+  if (!ul) return;
+  ul.innerHTML = '';
+
+  results.forEach((item) => {
+    const li = document.createElement('li');
+    li.className = item.ok ? 'healthOk' : 'healthWarn';
+    li.textContent = `${item.ok ? 'PASS' : 'FAIL'} | ${item.name}${item.detail ? ` | ${item.detail}` : ''}`;
+    ul.appendChild(li);
+  });
+}
+
+async function runSmokeTests() {
+  const results = [];
+  const push = (name, ok, detail = '') => results.push({ name, ok, detail });
+  const wait = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const ensure = (id) => {
+    const node = el(id);
+    if (!node) throw new Error(`${id} fehlt`);
+    return node;
+  };
+
+  try {
+    const btnIds = [
+      'loginBtn',
+      'logoutBtn',
+      'browseWorkspaceBtn',
+      'browseWorkspaceInteractiveBtn',
+      'newWorkspaceBtn',
+      'newChatBtn',
+      'clearActiveChatBtn',
+      'clearHistoryBtn',
+      'clearChatHistoryBtn',
+      'addSelectedFileBtn',
+      'addLocalFilesBtn',
+      'clearContextFilesBtn',
+      'addManualContextPathBtn',
+      'sendBtn',
+      'reindexBtn',
+      'checkModelsBtn',
+      'runSmokeTestsBtn',
+    ];
+    btnIds.forEach((id) => ensure(id));
+    push('Alle erwarteten Buttons vorhanden', true, `${btnIds.length} IDs geprueft`);
+  } catch (err) {
+    push('Alle erwarteten Buttons vorhanden', false, String(err));
+  }
+
+  try {
+    const oldPicker = window.showDirectoryPicker;
+    window.showDirectoryPicker = async () => ({ name: 'smoke-ws' });
+    el('workspacePathInput').value = '/tmp/smoke-ws';
+    ensure('browseWorkspaceBtn').click();
+    await wait();
+    const exists = state.workspaces.some((ws) => ws.path === '/tmp/smoke-ws');
+    push('Workspace Browse legt Workspace an', exists, exists ? '' : 'workspace nicht erstellt');
+    window.showDirectoryPicker = oldPicker;
+  } catch (err) {
+    push('Workspace Browse legt Workspace an', false, String(err));
+  }
+
+  try {
+    const before = Object.keys(state.chats).length;
+    ensure('newChatBtn').click();
+    await wait();
+    const after = Object.keys(state.chats).length;
+    push('Neuer Chat Button', after === before + 1, `vorher=${before}, nachher=${after}`);
+  } catch (err) {
+    push('Neuer Chat Button', false, String(err));
+  }
+
+  try {
+    const chat = activeChat();
+    if (!chat) throw new Error('kein aktiver Chat');
+    chat.messages.push({ ts: nowTs(), role: 'user', text: 'smoke message' });
+    ensure('clearActiveChatBtn').click();
+    await wait();
+    push('Aktiven Chat leeren', chat.messages.length === 0, `messages=${chat.messages.length}`);
+  } catch (err) {
+    push('Aktiven Chat leeren', false, String(err));
+  }
+
+  try {
+    el('manualContextPathInput').value = 'phase4/ui/index.html';
+    ensure('addManualContextPathBtn').click();
+    await wait();
+    const hasContext = (activeChat()?.stash?.contextFiles || []).includes('phase4/ui/index.html');
+    push('Manueller Kontextpfad', hasContext, hasContext ? '' : 'nicht hinzugefuegt');
+  } catch (err) {
+    push('Manueller Kontextpfad', false, String(err));
+  }
+
+  try {
+    ensure('clearContextFilesBtn').click();
+    await wait();
+    const empty = (activeChat()?.stash?.contextFiles || []).length === 0;
+    push('Kontextdateien leeren', empty, empty ? '' : 'nicht geleert');
+  } catch (err) {
+    push('Kontextdateien leeren', false, String(err));
+  }
+
+  const oldFetch = window.fetch;
+  try {
+    window.fetch = async (url, options = {}) => {
+      const target = String(url || '');
+      if (target.includes('/v1/rag/answer')) {
+        return new Response(JSON.stringify({ answer: 'OK', sources: [], low_confidence: false }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (target.includes('/v1/rag/ingest')) {
+        return new Response(JSON.stringify({ files_ingested: 1, chunks_ingested: 1 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (target.includes('/healthz')) {
+        return new Response(JSON.stringify({ service: 'mock-api' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return oldFetch(url, options);
+    };
+
+    const before = (activeChat()?.messages || []).length;
+    el('promptInput').value = 'smoke send';
+    ensure('sendBtn').click();
+    await wait(80);
+    const after = (activeChat()?.messages || []).length;
+    push('Senden Button', after >= before + 2, `messages vorher=${before}, nachher=${after}`);
+
+    el('userInput').value = 'smoke-admin';
+    el('roleInput').value = 'admin';
+    ensure('loginBtn').click();
+    await wait();
+    ensure('reindexBtn').click();
+    await wait(60);
+    const ok = String(el('statusBox').textContent || '').includes('Re-Index fertig');
+    push('Re-Index Button', ok, el('statusBox').textContent || '');
+  } catch (err) {
+    push('Senden/Re-Index Button', false, String(err));
+  } finally {
+    window.fetch = oldFetch;
+  }
+
+  try {
+    ensure('logoutBtn').click();
+    await wait();
+    const loggedOut = !state.session;
+    push('Logout Button', loggedOut, loggedOut ? '' : 'session noch gesetzt');
+  } catch (err) {
+    push('Logout Button', false, String(err));
+  }
+
+  const pass = results.filter((r) => r.ok).length;
+  const fail = results.length - pass;
+  renderSmokeTestResults(results);
+  addAudit('smoke_test', `pass=${pass}, fail=${fail}`);
+  setStatus(`Smoke-Tests fertig: ${pass} bestanden, ${fail} fehlgeschlagen.`, fail > 0);
 }
 
 function addAudit(type, detail) {
@@ -530,6 +826,8 @@ function renderUiHealth() {
     ['addLocalFilesBtn', 'Einzeldateien hinzufuegen'],
     ['sendBtn', 'Senden Button'],
     ['loginBtn', 'Login Button'],
+    ['checkModelsBtn', 'Modelle pruefen Button'],
+    ['runSmokeTestsBtn', 'Smoke-Tests Button'],
   ];
 
   list.innerHTML = '';
@@ -1236,6 +1534,8 @@ el('contextFileInput').addEventListener('change', (ev) => {
 });
 el('clearContextFilesBtn').addEventListener('click', clearContextFiles);
 el('addManualContextPathBtn').addEventListener('click', addManualContextPath);
+el('checkModelsBtn').addEventListener('click', checkModelsAvailability);
+el('runSmokeTestsBtn').addEventListener('click', runSmokeTests);
 
 document.querySelectorAll('.promptChip').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -1358,6 +1658,7 @@ el('reindexBtn').addEventListener('click', async () => {
   switchChat(state.activeChatId);
   renderProjectStructure();
   renderUiHealth();
+  renderModelHealth();
   updateModelInfo();
 
   if (state.session?.user) {
@@ -1369,6 +1670,7 @@ el('reindexBtn').addEventListener('click', async () => {
     const data = await requestJson(`${API_BASE}/healthz`);
     setStatus(`API bereit: ${data.service}`);
     addAudit('boot', 'ui initialisiert');
+    await checkModelsAvailability();
   } catch (err) {
     setStatus(`API nicht erreichbar (${API_BASE}). Fehler: ${String(err)}. Hinweis: bei HTTPS Nginx Proxy /api -> 127.0.0.1:4100 konfigurieren.`, true);
     addAudit('boot_error', String(err));

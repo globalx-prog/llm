@@ -104,6 +104,14 @@
         </label>
       </div>
 
+      <section class="modelAvailability" aria-label="Modellverfuegbarkeit">
+        <div class="historyHead">
+          <h3>Modellverfuegbarkeit</h3>
+          <button id="checkModelsBtn" class="ghostBtn" type="button">Modelle pruefen</button>
+        </div>
+        <ul id="modelHealthList" class="healthList"></ul>
+      </section>
+
       <div class="chatControlGrid">
         <label>Agent Mode
           <select id="agentModeInput">
@@ -214,6 +222,9 @@
       <ul id="sourcesList" class="sources"></ul>
       <h3>UI-Button-Check</h3>
       <ul id="uiHealthList" class="healthList"></ul>
+      <h3>Smoke-Tests</h3>
+      <button id="runSmokeTestsBtn" class="ghostBtn" type="button">Smoke-Tests ausfuehren</button>
+      <ul id="smokeTestList" class="healthList"></ul>
       <h3>Audit-Events</h3>
       <ul id="auditList" class="audit"></ul>
     </aside>

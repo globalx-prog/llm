@@ -221,6 +221,28 @@ input:focus, select:focus, textarea:focus {
 .modelInfo.deepseekcoder { border-left-color: #145a8d; }
 .modelInfo.mistral7b { border-left-color: #1f7d4f; }
 
+.modelAvailability {
+  margin: .2rem 0 .85rem;
+  padding: .55rem .7rem;
+  border: 1px solid #00000020;
+  border-radius: 10px;
+  background: #fffaf4;
+}
+
+#modelInput.modelSelectable {
+  border-width: 2px;
+}
+
+#modelInput.modelSelectable.modelOk {
+  border-color: #1f6e44;
+  background: #eef8f1;
+}
+
+#modelInput.modelSelectable.modelWarn {
+  border-color: #8b1e3f;
+  background: #fff3f6;
+}
+
 .workflowGuide {
   margin: 0 auto .9rem;
   max-width: 780px;
@@ -446,6 +468,10 @@ input:focus, select:focus, textarea:focus {
 }
 .healthWarn {
   color: #8b1e3f;
+}
+
+.healthInfo {
+  color: #8a6823;
 }
 
 @media (max-width: 1100px) {
