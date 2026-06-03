@@ -8,6 +8,18 @@ const API_BASE = window.LLM_API_BASE || (() => {
   return `${window.location.protocol}//${window.location.hostname}:4100`;
 })();
 
+const ROUTER_BASE = window.LLM_ROUTER_BASE || (() => {
+  if (window.location.protocol === 'https:') {
+    return `${window.location.protocol}//${window.location.hostname}:4000`;
+  }
+  if (window.location.protocol === 'file:') {
+    return 'http://127.0.0.1:4000';
+  }
+  return `${window.location.protocol}//${window.location.hostname}:4000`;
+})();
+
+const ROUTER_KEY = window.LLM_ROUTER_KEY || 'change_me_phase2';
+
 const el = (id) => document.getElementById(id);
 
 const state = {
@@ -114,7 +126,7 @@ const MODEL_BACKEND_TAGS = {
   'gemma3-27b': 'gemma3:27b',
   'llama3.3-70b': 'llama3.3:70b',
   'deepseek-r1-32b': 'deepseek-r1:32b',
-  'deepseek-coder-16b': 'deepseek-coder:16b',
+  'deepseek-coder-16b': 'deepseek-coder-v2:16b',
   'mistral-7b': 'mistral:7b',
 };
 
@@ -605,19 +617,42 @@ function renderModelHealth() {
 }
 
 async function probeModel(model) {
-  try {
-    const fallbackUser = normalizeUser(el('userInput')?.value || 'clemi') || 'clemi';
-    const headers = { 'Content-Type': 'application/json', ...authHeaders() };
-    if (!headers['X-User']) headers['X-User'] = fallbackUser;
-    if (!headers['X-Role']) headers['X-Role'] = 'admin';
+  const fallbackUser = normalizeUser(el('userInput')?.value || 'clemi') || 'clemi';
+  const project = (el('projectInput')?.value || 'mim-llm').trim() || 'mim-llm';
 
+  try {
+    const routerData = await requestJson(`${ROUTER_BASE}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${ROUTER_KEY}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: 'OK' }],
+        max_tokens: 8,
+      }),
+    });
+    const routerAnswer = String(routerData?.choices?.[0]?.message?.content || '').trim();
+    if (routerAnswer) {
+      return { ok: true, reason: '' };
+    }
+  } catch {
+    // Fallback to RAG probe when direct router call is blocked by browser/network policy.
+  }
+
+  try {
     const data = await requestJson(`${API_BASE}/v1/rag/answer`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User': fallbackUser,
+        'X-Role': 'admin',
+      },
       body: JSON.stringify({
         query: 'Antworte nur mit OK.',
         model,
-        project: (el('projectInput')?.value || 'mim-llm').trim() || 'mim-llm',
+        project,
         top_k: 1,
       }),
     });
@@ -628,7 +663,11 @@ async function probeModel(model) {
     }
     return { ok: true, reason: '' };
   } catch (err) {
-    return { ok: false, reason: String(err) };
+    const reason = String(err);
+    if (reason.includes('NetworkError')) {
+      return { ok: false, reason: 'Netzwerkfehler zwischen Browser und API (fetch)' };
+    }
+    return { ok: false, reason };
   }
 }
 
