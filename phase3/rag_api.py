@@ -365,8 +365,63 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
 
     add_related(data.get("RelatedTopics") or [])
 
+    async def wikidata_hits(term: str, lang: str) -> list[dict[str, str]]:
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=RAG_WEB_VERIFY_TLS, headers=web_headers) as client:
+                resp = await client.get(
+                    "https://www.wikidata.org/w/api.php",
+                    params={
+                        "action": "wbsearchentities",
+                        "format": "json",
+                        "language": lang,
+                        "type": "item",
+                        "search": term,
+                        "limit": min(limit, 5),
+                    },
+                )
+                if resp.status_code != 200:
+                    return []
+                payload = resp.json() if resp.text else {}
+                entries = payload.get("search", []) if isinstance(payload, dict) else []
+
+                out: list[dict[str, str]] = []
+                for entry in entries:
+                    label = str((entry or {}).get("label") or "").strip()
+                    desc = str((entry or {}).get("description") or "").strip()
+                    concept = str((entry or {}).get("concepturi") or "").strip()
+                    qid = str((entry or {}).get("id") or "").strip()
+                    if not label and not qid:
+                        continue
+                    title = label or qid or "Wikidata"
+                    snippet = desc or f"Wikidata Eintrag {qid}" if qid else "Wikidata Eintrag"
+                    out.append(
+                        {
+                            "title": title,
+                            "url": concept or (f"https://www.wikidata.org/wiki/{qid}" if qid else ""),
+                            "snippet": snippet,
+                        }
+                    )
+                    if len(out) >= limit:
+                        break
+                return out
+        except Exception:
+            return []
+
     if len(results) >= limit:
         return results[:limit]
+
+    # Additional fallback provider: Wikidata often improves entity-centric questions.
+    for lang in ("de", "en"):
+        if len(results) >= limit:
+            break
+        for item in await wikidata_hits(q, lang):
+            key = f"{item.get('title','')}|{item.get('url','')}"
+            seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
+            if key in seen:
+                continue
+            results.append(item)
+            if len(results) >= limit:
+                break
 
     # Fallback: Wikipedia search + summary (de, then en) improves factual queries.
     async def wiki_hits(lang: str, term: str) -> list[dict[str, str]]:

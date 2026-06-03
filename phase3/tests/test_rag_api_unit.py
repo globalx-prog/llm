@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from unittest.mock import AsyncMock, patch
 
@@ -10,6 +11,7 @@ class _FakeResponse:
     def __init__(self, payload, status_code=200):
         self._payload = payload
         self.status_code = status_code
+        self.text = "x"
 
     def json(self):
         return self._payload
@@ -31,6 +33,41 @@ class _FakeAsyncClient:
 
     async def post(self, *args, **kwargs):
         return _FakeResponse(self.payload, status_code=200)
+
+    async def get(self, *args, **kwargs):
+        return _FakeResponse({}, status_code=200)
+
+
+class _WebProviderAsyncClient:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def get(self, url, params=None, **kwargs):
+        if "duckduckgo" in str(url):
+            return _FakeResponse({"AbstractText": "", "RelatedTopics": []}, status_code=200)
+        if "wikidata.org" in str(url):
+            return _FakeResponse(
+                {
+                    "search": [
+                        {
+                            "id": "Q937",
+                            "label": "Albert Einstein",
+                            "description": "deutsch-schweizerisch-US-amerikanischer Physiker",
+                            "concepturi": "https://www.wikidata.org/entity/Q937",
+                        }
+                    ]
+                },
+                status_code=200,
+            )
+        if "wikipedia.org" in str(url):
+            return _FakeResponse({"query": {"search": []}}, status_code=200)
+        return _FakeResponse({}, status_code=200)
 
 
 class RagApiUnitTests(unittest.TestCase):
@@ -64,6 +101,13 @@ class RagApiUnitTests(unittest.TestCase):
         filtered = self.mod._filter_relevant_web_hits("wer ist der schlauste mensch", hits, 5)
         self.assertTrue(filtered)
         self.assertEqual("Intelligenzquotient", filtered[0].get("title"))
+
+    def test_web_search_uses_wikidata_provider(self):
+        with patch.object(self.mod.httpx, "AsyncClient", _WebProviderAsyncClient):
+            with patch.object(self.mod.shutil, "which", return_value=None):
+                snippets = asyncio.run(self.mod._web_search_snippets("schlauster mensch", 3))
+        self.assertTrue(snippets)
+        self.assertTrue(any("wikidata.org" in str(item.get("url", "")) for item in snippets))
 
     def test_enforce_project_requires_explicit_project_for_multi_project_user(self):
         with self.assertRaises(self.mod.HTTPException) as err:
