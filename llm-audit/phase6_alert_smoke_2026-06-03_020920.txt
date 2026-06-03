@@ -1,0 +1,10 @@
+=== PHASE6 ALERT SMOKE CHECK ===
+timestamp=2026-06-03_020920
+--- endpoint checks ---
+http://127.0.0.1:4000/healthz -> HTTP 200
+http://127.0.0.1:4100/healthz -> HTTP 200
+http://127.0.0.1:4173 -> HTTP 200
+--- metrics checks ---
+router_metrics=present
+alert_rules_file=/home/clemi/projekte/LLM/phase6/alert_rules.yml
+alert_smoke_check=ok

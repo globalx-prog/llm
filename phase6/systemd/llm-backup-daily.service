@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily LLM stack backup snapshot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/clemi/projekte/LLM/phase6/backup_daily.sh

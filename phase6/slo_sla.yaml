@@ -1,0 +1,28 @@
+version: 1
+service: llm-stack
+service_tier: production
+owners:
+  primary: platform-admin
+  secondary: ml-ops
+
+sla:
+  availability_monthly_percent: 99.5
+  support:
+    p1_first_response_minutes: 15
+    p2_first_response_minutes: 60
+    p3_first_response_hours: 8
+
+slo:
+  window_days: 30
+  api_availability_percent: 99.5
+  api_error_rate_5m_percent_max: 2.0
+  api_latency_max_ms_target: 4000
+  rag_answer_success_percent_min: 98.0
+  backup:
+    rpo_hours_max: 24
+    rto_hours_max: 4
+    dr_test_frequency_days_max: 7
+
+notes:
+  - Error-rate and latency signals are derived from llm_router metrics.
+  - Backup freshness alert is based on llm_backup_last_success_unixtime metric.

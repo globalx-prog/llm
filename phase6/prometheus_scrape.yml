@@ -1,0 +1,24 @@
+scrape_configs:
+  - job_name: phase2-router
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 127.0.0.1:4000
+
+  - job_name: phase3-rag-api
+    metrics_path: /healthz
+    static_configs:
+      - targets:
+          - 127.0.0.1:4100
+
+  - job_name: phase4-ui-blackbox
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+      target: [http://127.0.0.1:4173]
+    static_configs:
+      - targets:
+          - 127.0.0.1:9115
+
+rule_files:
+  - /home/clemi/projekte/LLM/phase6/alert_rules.yml

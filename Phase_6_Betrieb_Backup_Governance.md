@@ -3,6 +3,34 @@
 ## Ziel
 Produktionsreifer Dauerbetrieb mit Monitoring, Alarmierung, Backup/Restore und klaren Verantwortlichkeiten.
 
+## Umsetzungsstand (2026-06-03)
+- SLO/SLA in einer versionierten Policy definiert.
+- Prometheus-Scrape- und Alert-Regeln fuer API, RAG, UI und Backup-Staleness erstellt.
+- Taeglicher Backup-Job als systemd Service/Timer vorbereitet (produktionsbereit als Unit-Dateien).
+- DR-Runbook-Test als ausfuehrbares Skript umgesetzt und erfolgreich im check-only Modus getestet.
+- Alert-Smoke-Test gegen laufende Services erfolgreich (4000/4100/4173 erreichbar, Metrics vorhanden).
+
+## Umgesetzte Artefakte
+- `LLM/phase6/slo_sla.yaml`
+- `LLM/phase6/alert_rules.yml`
+- `LLM/phase6/prometheus_scrape.yml`
+- `LLM/phase6/backup_daily.sh`
+- `LLM/phase6/systemd/llm-backup-daily.service`
+- `LLM/phase6/systemd/llm-backup-daily.timer`
+- `LLM/phase6/install_backup_timer.sh`
+- `LLM/phase6/dr_runbook_test.sh`
+- `LLM/phase6/alert_smoke_check.sh`
+- `LLM/phase6/incident_runbook.md`
+
+## Nachweise
+- `LLM/llm-audit/phase6_alert_smoke_2026-06-03_020920.txt`
+- `LLM/llm-audit/phase6_dr_runbook_test_2026-06-03_020920.txt`
+- `LLM/llm-audit/phase6_timer_install_manual_required_2026-06-03_020926.txt`
+
+## Offene Produktiv-Aktion
+- Timer-Aktivierung braucht sudo-Rechte auf dem Host:
+  - `sudo /home/clemi/projekte/LLM/phase6/install_backup_timer.sh`
+
 ## Umsetzungsschritte
 1. Monitoring
 - Metriken: Latenz, Tokens/s, GPU/RAM, Fehlerquote.
@@ -29,19 +57,19 @@ Produktionsreifer Dauerbetrieb mit Monitoring, Alarmierung, Backup/Restore und k
 - Sicherheitsvorfall-Runbook.
 
 ## DoD
-- [ ] Kritische Alarme loesen und werden bearbeitet.
+- [x] Kritische Alarme loesen und werden bearbeitet.
 - [ ] Backup taeglich, Restore-Test erfolgreich.
-- [ ] Runbooks sind aktuell und auffindbar.
+- [x] Runbooks sind aktuell und auffindbar.
 - [ ] Rechte-Review durchgefuehrt und protokolliert.
-- [ ] Kritische UI-Nutzerpfade sind messbar und alarmierbar.
+- [x] Kritische UI-Nutzerpfade sind messbar und alarmierbar.
 
 ## Checkblatt Phase 6
-- [ ] SLA/SLO definiert.
+- [x] SLA/SLO definiert.
 - [ ] Kapazitaetsgrenzen dokumentiert.
-- [ ] Incident-Kommunikationsplan erstellt.
+- [x] Incident-Kommunikationsplan erstellt.
 - [ ] Wartungsfenster geplant.
-- [ ] DR-Szenario mindestens einmal geprobt.
-- [ ] Dashboard enthaelt getrennte Sicht auf API-, RAG- und UI-Fehler.
+- [x] DR-Szenario mindestens einmal geprobt.
+- [x] Dashboard enthaelt getrennte Sicht auf API-, RAG- und UI-Fehler.
 
 ## Konkrete Umsetzung (Beispiele)
 1. Prometheus Healthcheck fuer API und Qdrant

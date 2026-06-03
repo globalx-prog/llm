@@ -1,0 +1,13 @@
+=== PHASE6 DR RUNBOOK TEST ===
+timestamp=2026-06-03_020920
+backup_dir=/tmp/phase6_backup_fixture_2026-06-03_020920
+backup_source=fixture
+--- restore preflight ---
+[OK] backup directory looks valid: /tmp/phase6_backup_fixture_2026-06-03_020920
+Check-only mode complete.
+--- service health ---
+http://127.0.0.1:4000/healthz -> HTTP 200
+http://127.0.0.1:4100/healthz -> HTTP 200
+http://127.0.0.1:4173 -> HTTP 200
+--- outcome ---
+dr_runbook_test=ok
