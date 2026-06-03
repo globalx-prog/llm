@@ -4,7 +4,9 @@ const el = (id) => document.getElementById(id);
 const state = {
   session: null,
   audit: [],
+  history: [],
 };
+const HISTORY_KEY = 'llm-controldeck-history-v1';
 
 const MODEL_PROFILES = {
   fast: {
@@ -26,6 +28,57 @@ function updateModelInfo() {
   box.classList.remove('fast', 'quality');
   box.classList.add(profile.css);
   el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.`;
+  el('modelExplainLink').href = `modelle.html#${current}`;
+}
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) {
+      state.history = parsed.slice(0, 30);
+    }
+  } catch {
+    state.history = [];
+  }
+}
+
+function persistHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history.slice(0, 30)));
+  } catch {
+    // Ignore storage errors (private mode / quota).
+  }
+}
+
+function renderHistory() {
+  const ul = el('historyList');
+  ul.innerHTML = '';
+  if (!state.history.length) {
+    const li = document.createElement('li');
+    li.textContent = 'Noch keine Suchanfragen.';
+    ul.appendChild(li);
+    return;
+  }
+
+  state.history.forEach((item) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.ts} | ${item.model} | ${item.project || '-'} | ${item.query}`;
+    ul.appendChild(li);
+  });
+}
+
+function addHistory(query, model, project) {
+  const entry = {
+    ts: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+    query,
+    model,
+    project,
+  };
+  state.history.unshift(entry);
+  state.history = state.history.slice(0, 30);
+  persistHistory();
+  renderHistory();
 }
 
 async function requestJson(url, options = {}) {
@@ -92,6 +145,12 @@ el('loginBtn').addEventListener('click', () => {
 });
 
 el('modelInput').addEventListener('change', updateModelInfo);
+el('clearHistoryBtn').addEventListener('click', () => {
+  state.history = [];
+  persistHistory();
+  renderHistory();
+  addAudit('history', 'suchverlauf geloescht');
+});
 
 el('sendBtn').addEventListener('click', async () => {
   const query = el('promptInput').value.trim();
@@ -101,6 +160,7 @@ el('sendBtn').addEventListener('click', async () => {
   const top_k = Number(el('topKInput').value || 5);
 
   addMessage('user', query);
+  addHistory(query, model, project);
   setStatus('Sende Anfrage...');
 
   try {
@@ -172,6 +232,8 @@ el('reindexBtn').addEventListener('click', async () => {
 });
 
 (async function boot() {
+  loadHistory();
+  renderHistory();
   updateModelInfo();
   setStatus('Pruefe API...');
   try {

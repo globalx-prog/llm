@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modellprofile - LLM Control Deck</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --fast: #2b7a62;
+      --quality: #c86a2b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(960px 420px at 0% -4%, #ffe6ca, transparent), var(--paper);
+    }
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.1rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid #0000001f;
+      border-radius: 14px;
+      padding: 1rem;
+      box-shadow: 0 10px 25px #00000010;
+      margin-bottom: 1rem;
+    }
+    h1 { margin: 0 0 .35rem; }
+    .sub { margin: 0; opacity: .8; }
+    .model {
+      border-left: 5px solid #8f8f8f;
+      padding-left: .8rem;
+      margin-top: .8rem;
+    }
+    .model.fast { border-left-color: var(--fast); }
+    .model.quality { border-left-color: var(--quality); }
+    .mono {
+      display: inline-block;
+      background: #f5f7fa;
+      border: 1px solid #d9dfe8;
+      border-radius: 6px;
+      padding: .15rem .4rem;
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: .86rem;
+    }
+    ul { margin-top: .4rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Fast vs Quality</h1>
+      <p class="sub">Diese Seite beschreibt die aktuell im Stack konfigurierten Modellprofile.</p>
+
+      <article id="fast" class="model fast">
+        <h2>Fast</h2>
+        <p>Optimiert auf niedrige Latenz und schnelle Interaktion. Ideal fuer kurze Rueckfragen, Agenten-Schleifen und UI-nahe Aufgaben.</p>
+        <ul>
+          <li>Backend-Ziel: <span class="mono">127.0.0.1:8001</span></li>
+          <li>Profil: <span class="mono">fast</span></li>
+          <li>Typisch: schnellere Antwort, weniger Tiefe</li>
+        </ul>
+      </article>
+
+      <article id="quality" class="model quality">
+        <h2>Quality</h2>
+        <p>Optimiert auf Antworttiefe und robustere Ergebnisqualitaet bei hoeherer Latenz. Geeignet fuer komplexe Prompts, Zusammenfassungen und Analysen.</p>
+        <ul>
+          <li>Backend-Ziel: <span class="mono">127.0.0.1:8000</span></li>
+          <li>Profil: <span class="mono">quality</span></li>
+          <li>Fallback: <span class="mono">quality -> fast</span> bei Backend-Fehlern</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Token-Limits (Router)</h2>
+      <ul>
+        <li>viewer: <span class="mono">800</span> max_tokens</li>
+        <li>admin: <span class="mono">4000</span> max_tokens</li>
+      </ul>
+      <p>Die Limits werden im Router serverseitig erzwungen.</p>
+    </section>
+  </main>
+</body>
+</html>

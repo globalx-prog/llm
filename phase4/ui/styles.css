@@ -116,6 +116,15 @@ input:focus, select:focus, textarea:focus {
   font-size: .88rem;
   line-height: 1.35;
 }
+.modelLink {
+  display: inline-block;
+  margin-top: .55rem;
+  color: #0f5f7f;
+  font-size: .82rem;
+  text-decoration: none;
+  border-bottom: 1px solid #0f5f7f55;
+}
+.modelLink:hover { filter: brightness(1.1); }
 .modelInfo.fast { border-left-color: var(--accent-2); }
 .modelInfo.quality { border-left-color: var(--accent); }
 
@@ -133,6 +142,35 @@ input:focus, select:focus, textarea:focus {
 .msg.bot { background: #ddf0e7; border-left: 4px solid var(--accent-2); }
 .composer { margin-top: .8rem; }
 .status { font-size: .9rem; padding: .55rem; border-radius: 8px; background: #fff; border: 1px solid #00000022; }
+.historyHead {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .6rem;
+}
+.historyHead h3 { margin: 0; }
+.ghostBtn {
+  width: auto;
+  margin-top: 0;
+  padding: .36rem .55rem;
+  font-size: .76rem;
+  color: #0d4b62;
+  border: 1px solid #0d4b6240;
+  border-radius: 8px;
+  background: #f0f8fb;
+}
+.history {
+  margin: .55rem 0 .95rem;
+  padding-left: 1rem;
+  max-height: 140px;
+  overflow: auto;
+}
+.history li {
+  margin-bottom: .45rem;
+  font-size: .82rem;
+  line-height: 1.3;
+}
 .sources, .audit { margin: 0; padding-left: 1rem; max-height: 180px; overflow: auto; }
 .sources li, .audit li { margin-bottom: .45rem; font-size: .88rem; }
 

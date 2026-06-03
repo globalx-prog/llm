@@ -64,6 +64,7 @@
       <section id="modelInfo" class="modelInfo fast" aria-live="polite">
         <h3>Modellprofil</h3>
         <p id="modelDesc"></p>
+        <a id="modelExplainLink" class="modelLink" href="modelle.html#fast" target="_blank" rel="noopener noreferrer">Was bedeuten Fast und Quality?</a>
       </section>
 
       <div id="messages" class="messages"></div>
@@ -77,6 +78,13 @@
     <aside class="panel transparency">
       <h2>Transparenz</h2>
       <div id="statusBox" class="status">Bereit</div>
+
+      <div class="historyHead">
+        <h3>Suchverlauf</h3>
+        <button id="clearHistoryBtn" class="ghostBtn" type="button">Leeren</button>
+      </div>
+      <ul id="historyList" class="history"></ul>
+
       <h3>Quellen</h3>
       <ul id="sourcesList" class="sources"></ul>
       <h3>Audit-Events</h3>
