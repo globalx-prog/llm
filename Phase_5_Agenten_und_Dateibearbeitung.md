@@ -3,6 +3,29 @@
 ## Ziel
 Agenten fuer mehrere Projekte sicher betreiben, mit kontrollierter Dateibearbeitung und Review-Prozess.
 
+## Umsetzungsstand (2026-06-03)
+- Policy-gesteuerter Agenten-Runner umgesetzt.
+- Allowlist/denylist aktiv und getestet.
+- Jeder schreibende Lauf erzeugt `run_id`, Diff-Datei und Audit-JSON mit Nutzerbezug.
+- Notfall-Stop umgesetzt ueber Stop-File (`/data/agents/STOP`).
+- Validierungspipeline als Vor-Merge-Skript umgesetzt (`phase5/validate_pipeline.sh`).
+- Rollback-Test erfolgreich ueber Git-Restore eines Agentenlaufs.
+
+## Artefakte und Komponenten
+- Implementierung:
+  - `LLM/phase5/agent_policy.yaml`
+  - `LLM/phase5/agent_runner.py`
+  - `LLM/phase5/agent_stop.sh`
+  - `LLM/phase5/agent_resume.sh`
+  - `LLM/phase5/validate_pipeline.sh`
+- Laufzeit:
+  - `/data/agents/policy.yaml`
+  - `/data/logs/agents/*.json`
+  - `/data/logs/agents/*.diff`
+- Nachweise:
+  - `LLM/llm-audit/phase5_execution_2026-06-03_020520.txt`
+  - `LLM/llm-audit/phase5_deny_test.txt`
+
 ## Umsetzungsschritte
 1. Agenten-Runner
 - Laufzeitumgebung je Projekt definieren.
@@ -28,17 +51,17 @@ Agenten fuer mehrere Projekte sicher betreiben, mit kontrollierter Dateibearbeit
 - Auditlog fuer jede Aenderung.
 
 ## DoD
-- [ ] Agent kann Dateien nur in erlaubten Pfaden aendern.
-- [ ] Jeder schreibende Lauf erzeugt Diff und Run-ID.
+- [x] Agent kann Dateien nur in erlaubten Pfaden aendern.
+- [x] Jeder schreibende Lauf erzeugt Diff und Run-ID.
 - [ ] Admin-Owner-Freigabe ist fuer Merge verpflichtend; optional Reviewer Co-Signoff.
-- [ ] Rollback auf vorherige Version ist getestet.
-- [ ] UI blockiert schreibende Agentenstarts ohne Pflichtmetadaten.
+- [x] Rollback auf vorherige Version ist getestet.
+- [x] UI blockiert schreibende Agentenstarts ohne Pflichtmetadaten.
 
 ## Checkblatt Phase 5
-- [ ] Allowlist/denylist dokumentiert.
-- [ ] Validierungspipeline laeuft vor Merge.
-- [ ] Audittrail inkl. Nutzerbezug vorhanden.
-- [ ] Notfall-Stop fuer Agentenlaeufe verfuegbar.
+- [x] Allowlist/denylist dokumentiert.
+- [x] Validierungspipeline laeuft vor Merge.
+- [x] Audittrail inkl. Nutzerbezug vorhanden.
+- [x] Notfall-Stop fuer Agentenlaeufe verfuegbar.
 - [ ] Rechte fuer Branch-Protection aktiv.
 - [ ] UI-Diff-Vorschau vor Schreibaktion getestet.
 

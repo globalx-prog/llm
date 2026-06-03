@@ -1,0 +1,17 @@
+=== VALIDATE PIPELINE ===
+== validate pipeline ==
+skip: no package.json
+skip: gitleaks not installed
+validate pipeline done
+=== LATEST AGENT AUDIT FILES ===
+/data/logs/agents/agent_run_20260603T000425Z_fed97010.json
+/data/logs/agents/agent_run_20260603T000425Z_f753b7f8.json
+/data/logs/agents/agent_run_20260603T000425Z_fed97010.diff
+/data/logs/agents/agent_run_20260603T000425Z_f753b7f8.diff
+=== DENY TEST OUTPUT ===
+blocked: denylist/allowlist violation
+/home/clemi/projekte/LLM/phase5/agent_policy.yaml
+=== ROLLBACK TEST ===
+rollback-ok: phase5_agent_probe reverted
+=== EMERGENCY STOP FILE STATUS ===
+STOP=off

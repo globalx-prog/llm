@@ -1,0 +1,18 @@
+write_allowlist:
+  - /home/clemi/projekte/LLM/**
+  - /mnt/nas/projects/mim-llm/**
+write_denylist:
+  - /etc/**
+  - /root/**
+  - /data/litellm/**
+  - /data/caddy/**
+  - /home/clemi/projekte/LLM/.git/**
+  - /home/clemi/projekte/LLM/phase5/**
+required_metadata:
+  - reason
+  - task_id
+allowed_roles:
+  - admin
+  - service
+audit_log_dir: /data/logs/agents
+emergency_stop_file: /data/agents/STOP
