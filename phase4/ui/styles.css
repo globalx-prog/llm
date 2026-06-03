@@ -89,10 +89,12 @@ label { display: block; font-size: .86rem; margin-bottom: .6rem; }
 .workspaceTools {
   display: flex;
   gap: .45rem;
+  flex-wrap: wrap;
   margin: .35rem 0 .55rem;
 }
 .workspaceTools .ghostBtn {
   flex: 1;
+  min-width: 140px;
 }
 .fieldHelp {
   margin: .38rem 0 0;

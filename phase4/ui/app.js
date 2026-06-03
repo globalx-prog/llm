@@ -19,6 +19,8 @@ const CHAT_STORE_PREFIX = 'llm-controldeck-chats-v3';
 const USERS_KEY = 'llm-users-v1';
 const SESSION_KEY = 'llm-active-session-v1';
 const WORKSPACES_KEY = 'llm-workspaces-v1';
+const ACTIVE_WORKSPACE_KEY = 'llm-active-workspace-v1';
+const WORKSPACE_TREE_PREFIX = 'llm-workspace-tree-v1';
 
 const PROJECT_STRUCTURE = {
   name: 'LLM/',
@@ -54,6 +56,8 @@ const PROJECT_STRUCTURE = {
     },
   ],
 };
+
+let currentProjectStructure = PROJECT_STRUCTURE;
 
 const MODEL_PROFILES = {
   'gemma2-2b': {
@@ -155,6 +159,81 @@ function sessionChatStoreKey() {
   return `${CHAT_STORE_PREFIX}:${user}:${workspace}`;
 }
 
+function saveActiveWorkspace() {
+  try {
+    localStorage.setItem(ACTIVE_WORKSPACE_KEY, String(state.activeWorkspaceId || ''));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function workspaceTreeKey(workspaceId) {
+  return `${WORKSPACE_TREE_PREFIX}:${workspaceId}`;
+}
+
+function saveWorkspaceTree(workspaceId, tree) {
+  if (!workspaceId || !tree) return;
+  try {
+    localStorage.setItem(workspaceTreeKey(workspaceId), JSON.stringify(tree));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function loadWorkspaceTree(workspaceId) {
+  if (!workspaceId) return PROJECT_STRUCTURE;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(workspaceTreeKey(workspaceId)) || 'null');
+    if (parsed && parsed.name && Array.isArray(parsed.children)) {
+      return parsed;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return PROJECT_STRUCTURE;
+}
+
+function buildStructureFromFileList(rootName, relativePaths) {
+  const mkNode = () => ({ folders: new Map(), files: new Set() });
+  const root = mkNode();
+
+  relativePaths.forEach((rawPath) => {
+    const rel = String(rawPath || '').trim();
+    if (!rel) return;
+    const parts = rel.split('/').filter(Boolean);
+    let node = root;
+    if (parts.length <= 1) {
+      node.files.add(parts[0]);
+      return;
+    }
+    for (let i = 1; i < parts.length; i += 1) {
+      const part = parts[i];
+      const isFile = i === parts.length - 1;
+      if (isFile) {
+        node.files.add(part);
+      } else {
+        if (!node.folders.has(part)) {
+          node.folders.set(part, mkNode());
+        }
+        node = node.folders.get(part);
+      }
+    }
+  });
+
+  const toChildren = (node) => {
+    const folders = [...node.folders.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, child]) => ({ name: `${name}/`, children: toChildren(child) }));
+    const files = [...node.files].sort((a, b) => a.localeCompare(b));
+    return [...folders, ...files];
+  };
+
+  return {
+    name: `${rootName || 'workspace'}/`,
+    children: toChildren(root),
+  };
+}
+
 function activeWorkspace() {
   return state.workspaces.find((ws) => ws.id === state.activeWorkspaceId) || null;
 }
@@ -183,6 +262,15 @@ function renderWorkspaceSelect() {
 
 function loadWorkspaces() {
   try {
+    const savedActive = localStorage.getItem(ACTIVE_WORKSPACE_KEY);
+    if (savedActive) {
+      state.activeWorkspaceId = savedActive;
+    }
+  } catch {
+    // ignore storage errors
+  }
+
+  try {
     const parsed = JSON.parse(localStorage.getItem(WORKSPACES_KEY) || '[]');
     if (Array.isArray(parsed) && parsed.length) {
       state.workspaces = parsed
@@ -210,6 +298,7 @@ function loadWorkspaces() {
     state.activeWorkspaceId = state.workspaces[0].id;
   }
 
+  saveActiveWorkspace();
   renderWorkspaceSelect();
 }
 
@@ -261,6 +350,7 @@ function createWorkspace(name, path) {
     existing.name = wsName;
     existing.lastUsedAt = new Date().toISOString();
     state.activeWorkspaceId = existing.id;
+    saveActiveWorkspace();
     saveWorkspaces();
     renderWorkspaceSelect();
     return existing;
@@ -277,9 +367,23 @@ function createWorkspace(name, path) {
   };
   state.workspaces.unshift(created);
   state.activeWorkspaceId = created.id;
+  saveActiveWorkspace();
   saveWorkspaces();
   renderWorkspaceSelect();
   return created;
+}
+
+function activateWorkspaceSession(ws) {
+  if (!ws) return;
+  state.activeWorkspaceId = ws.id;
+  saveActiveWorkspace();
+  currentProjectStructure = loadWorkspaceTree(ws.id);
+  state.selectedFsPath = null;
+  el('projectInput').value = ws.projectHint || el('projectInput').value || 'mim-llm';
+  loadChats();
+  renderChatSessions();
+  switchChat(state.activeChatId);
+  renderProjectStructure();
 }
 
 function updateUserSuggestions() {
@@ -664,6 +768,8 @@ function switchChat(nextChatId) {
   el('agentModeInput').value = chat.stash.agentMode || 'off';
   if (chat?.stash?.workspaceId && chat.stash.workspaceId !== state.activeWorkspaceId) {
     state.activeWorkspaceId = chat.stash.workspaceId;
+    saveActiveWorkspace();
+    currentProjectStructure = loadWorkspaceTree(state.activeWorkspaceId);
     renderWorkspaceSelect();
   }
   state.selectedFsPath = chat.stash.selectedFsPath || null;
@@ -769,7 +875,7 @@ function renderProjectStructure() {
   el('fsSelectedPath').textContent = `Ausgewaehlt: ${state.selectedFsPath || '-'} | Workspace: ${wsPath}`;
 
   tree.innerHTML = '';
-  tree.appendChild(createTreeNode(PROJECT_STRUCTURE));
+  tree.appendChild(createTreeNode(currentProjectStructure));
 }
 
 function addSelectedFileToContext() {
@@ -789,6 +895,31 @@ function addSelectedFileToContext() {
     addAudit('context_add', path);
     setStatus(`Datei zum Kontext hinzugefuegt: ${path}`);
   }
+}
+
+function addLocalFilesToContext(fileList) {
+  const chat = activeChat();
+  if (!chat) return;
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+
+  let added = 0;
+  files.forEach((file) => {
+    const rel = String(file.webkitRelativePath || file.name || '').trim();
+    if (!rel) return;
+    const marker = `lokal:${rel}`;
+    if (!chat.stash.contextFiles.includes(marker)) {
+      chat.stash.contextFiles.push(marker);
+      added += 1;
+    }
+  });
+
+  chat.stash.contextFiles = chat.stash.contextFiles.slice(-30);
+  chat.updatedAt = new Date().toISOString();
+  saveChats();
+  renderContextFiles();
+  addAudit('context_add_local', `${added} dateien`);
+  setStatus(added ? `${added} lokale Datei(en) zum Kontext hinzugefuegt.` : 'Keine neue Datei hinzugefuegt.');
 }
 
 function clearContextFiles() {
@@ -841,11 +972,8 @@ async function createWorkspaceFromPicker() {
     return;
   }
 
-  el('projectInput').value = ws.projectHint || el('projectInput').value || 'mim-llm';
-  loadChats();
-  renderChatSessions();
-  switchChat(state.activeChatId);
-  renderProjectStructure();
+  currentProjectStructure = loadWorkspaceTree(ws.id);
+  activateWorkspaceSession(ws);
   addAudit('workspace_open', `${ws.name} (${ws.path})`);
   setStatus(`Workspace aktiv: ${ws.name}`);
 }
@@ -857,18 +985,40 @@ function createWorkspaceFromPrompt() {
   const name = window.prompt('Name fuer den Workspace', fallbackName) || fallbackName;
   const ws = createWorkspace(name, path.trim());
   if (!ws) return;
-  loadChats();
-  renderChatSessions();
-  switchChat(state.activeChatId);
-  renderProjectStructure();
+  currentProjectStructure = loadWorkspaceTree(ws.id);
+  activateWorkspaceSession(ws);
   addAudit('workspace_new', `${ws.name} (${ws.path})`);
   setStatus(`Workspace angelegt: ${ws.name}`);
+}
+
+function createWorkspaceFromFileList(fileList) {
+  const files = Array.from(fileList || []);
+  const relPaths = files.map((f) => String(f.webkitRelativePath || f.name || '').trim()).filter(Boolean);
+  if (!relPaths.length) {
+    setStatus('Keine Dateien fuer interaktiven Workspace-Browse erhalten.', true);
+    return;
+  }
+
+  const rootName = relPaths[0].split('/').filter(Boolean)[0] || 'workspace';
+  const suggestedPath = `/home/clemi/projekte/${rootName}`;
+  const path = window.prompt('Dateipfad fuer diesen Workspace bestaetigen', suggestedPath) || suggestedPath;
+  const name = window.prompt('Name fuer den Workspace', rootName) || rootName;
+
+  const ws = createWorkspace(name, path.trim());
+  if (!ws) return;
+
+  currentProjectStructure = buildStructureFromFileList(rootName, relPaths);
+  saveWorkspaceTree(ws.id, currentProjectStructure);
+  activateWorkspaceSession(ws);
+  addAudit('workspace_browse_interactive', `${ws.name} (${relPaths.length} files)`);
+  setStatus(`Interaktiver FS-Import aktiv: ${ws.name} mit ${relPaths.length} Datei(en).`);
 }
 
 el('loginBtn').addEventListener('click', loginCurrentUser);
 el('userInput').addEventListener('change', applyUserRoleHint);
 el('workspaceSelect').addEventListener('change', (ev) => {
   state.activeWorkspaceId = ev.target.value;
+  saveActiveWorkspace();
   const ws = activeWorkspace();
   if (ws) {
     ws.lastUsedAt = new Date().toISOString();
@@ -877,6 +1027,7 @@ el('workspaceSelect').addEventListener('change', (ev) => {
       el('projectInput').value = ws.projectHint;
     }
   }
+  currentProjectStructure = loadWorkspaceTree(state.activeWorkspaceId);
   loadChats();
   renderChatSessions();
   switchChat(state.activeChatId);
@@ -884,6 +1035,13 @@ el('workspaceSelect').addEventListener('change', (ev) => {
   addAudit('workspace_switch', state.activeWorkspaceId || '-');
 });
 el('browseWorkspaceBtn').addEventListener('click', createWorkspaceFromPicker);
+el('browseWorkspaceInteractiveBtn').addEventListener('click', () => {
+  el('workspaceDirInput').click();
+});
+el('workspaceDirInput').addEventListener('change', (ev) => {
+  createWorkspaceFromFileList(ev.target.files);
+  ev.target.value = '';
+});
 el('newWorkspaceBtn').addEventListener('click', createWorkspaceFromPrompt);
 
 el('modelInput').addEventListener('change', () => {
@@ -935,6 +1093,13 @@ el('clearChatHistoryBtn').addEventListener('click', () => {
 });
 
 el('addSelectedFileBtn').addEventListener('click', addSelectedFileToContext);
+el('addLocalFilesBtn').addEventListener('click', () => {
+  el('contextFileInput').click();
+});
+el('contextFileInput').addEventListener('change', (ev) => {
+  addLocalFilesToContext(ev.target.files);
+  ev.target.value = '';
+});
 el('clearContextFilesBtn').addEventListener('click', clearContextFiles);
 
 document.querySelectorAll('.promptChip').forEach((btn) => {
@@ -1042,6 +1207,7 @@ el('reindexBtn').addEventListener('click', async () => {
 
 (async function boot() {
   loadWorkspaces();
+  currentProjectStructure = loadWorkspaceTree(state.activeWorkspaceId);
   loadUsers();
   loadSession();
   loadHistory();

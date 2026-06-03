@@ -33,8 +33,10 @@
       </label>
       <div class="workspaceTools">
         <button id="browseWorkspaceBtn" class="ghostBtn" type="button">Dateisystem durchsuchen</button>
+        <button id="browseWorkspaceInteractiveBtn" class="ghostBtn" type="button">Interaktiv FS browsen</button>
         <button id="newWorkspaceBtn" class="ghostBtn" type="button">Neuen Workspace anlegen</button>
       </div>
+      <input id="workspaceDirInput" type="file" webkitdirectory directory multiple hidden />
       <a class="topLink inline" href="workspaces.html" target="_blank" rel="noopener noreferrer">Workspace Uebersicht oeffnen</a>
 
       <h2>Projektkontext</h2>
@@ -157,8 +159,10 @@
         <p class="fieldHelp">Dein Arbeitsauftrag an das Modell. Konkrete Ziele, Randbedingungen und Ausgabeformat verbessern die Antwortqualitaet.</p>
         <div class="contextTools">
           <button id="addSelectedFileBtn" class="ghostBtn" type="button">Ausgewaehlte Datei zum Kontext</button>
+          <button id="addLocalFilesBtn" class="ghostBtn" type="button">Einzeldateien hinzufuegen</button>
           <button id="clearContextFilesBtn" class="ghostBtn" type="button">Kontextdateien leeren</button>
         </div>
+        <input id="contextFileInput" type="file" multiple hidden />
         <div class="contextFilesWrap">
           <h3>Kontextdateien</h3>
           <ul id="contextFilesList" class="contextFiles"></ul>

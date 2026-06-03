@@ -67,6 +67,9 @@
       padding-left: 1rem;
     }
     .sublist li { margin-bottom: .2rem; }
+    .active {
+      background: #eef8ff;
+    }
   </style>
 </head>
 <body>
@@ -80,6 +83,12 @@
         <button id="addBtn" type="button">Workspace anlegen</button>
         <button id="reloadBtn" type="button">Neu laden</button>
       </div>
+    </section>
+
+    <section class="card">
+      <h2>Aktueller Workspace</h2>
+      <div id="currentWorkspaceBox" class="meta">Wird geladen...</div>
+      <ul id="currentWorkspaceChats" class="sublist"></ul>
     </section>
 
     <section class="card">
@@ -100,6 +109,8 @@
 
   <script>
     const WORKSPACES_KEY = 'llm-workspaces-v1';
+    const ACTIVE_WORKSPACE_KEY = 'llm-active-workspace-v1';
+    const CHAT_STORE_PREFIX = 'llm-controldeck-chats-v3';
 
     function loadWorkspaces() {
       try {
@@ -121,10 +132,78 @@
       return Number.isNaN(d.getTime()) ? ts : d.toLocaleString('de-DE');
     }
 
+    function activeWorkspaceId() {
+      try {
+        return localStorage.getItem(ACTIVE_WORKSPACE_KEY) || '';
+      } catch {
+        return '';
+      }
+    }
+
+    function getWorkspaceChats(wsId) {
+      if (!wsId) return [];
+      const all = [];
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(`${CHAT_STORE_PREFIX}:`) || !key.endsWith(`:${wsId}`)) {
+          continue;
+        }
+
+        const user = key.slice(CHAT_STORE_PREFIX.length + 1).split(':')[0] || 'user';
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+          const chats = Array.isArray(parsed.chats) ? parsed.chats : [];
+          chats.forEach((chat) => {
+            all.push({
+              user,
+              title: chat?.title || chat?.id || '-',
+              chatId: chat?.id || '-',
+              updatedAt: chat?.updatedAt || '',
+            });
+          });
+        } catch {
+          // ignore bad payload
+        }
+      }
+
+      return all.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+    }
+
+    function renderCurrentWorkspace(workspaces) {
+      const currentId = activeWorkspaceId();
+      const box = document.getElementById('currentWorkspaceBox');
+      const list = document.getElementById('currentWorkspaceChats');
+      list.innerHTML = '';
+
+      const ws = workspaces.find((item) => String(item.id) === currentId);
+      if (!ws) {
+        box.textContent = 'Kein aktiver Workspace gesetzt.';
+        return;
+      }
+
+      box.innerHTML = `<strong>${ws.name || '-'}</strong> | <span class="mono">${ws.path || '-'}</span> | Letzte Nutzung: ${fmtTs(ws.lastUsedAt)}`;
+
+      const chats = getWorkspaceChats(currentId);
+      if (!chats.length) {
+        const li = document.createElement('li');
+        li.textContent = 'Keine Chats fuer den aktuellen Workspace gefunden.';
+        list.appendChild(li);
+        return;
+      }
+
+      chats.slice(0, 30).forEach((item) => {
+        const li = document.createElement('li');
+        li.textContent = `${item.user} | ${item.title} | ${fmtTs(item.updatedAt)}`;
+        list.appendChild(li);
+      });
+    }
+
     function render() {
       const rows = document.getElementById('workspaceRows');
       rows.innerHTML = '';
       const workspaces = loadWorkspaces().sort((a, b) => String(b.lastUsedAt || '').localeCompare(String(a.lastUsedAt || '')));
+      const currentId = activeWorkspaceId();
+      renderCurrentWorkspace(workspaces);
 
       if (!workspaces.length) {
         const tr = document.createElement('tr');
@@ -137,6 +216,9 @@
         const chats = Array.isArray(ws.executedChats) ? ws.executedChats : [];
         const chatLines = chats.slice(0, 12).map((item) => `<li>${item.user || 'user'} | ${item.title || item.chatId || '-'} | ${fmtTs(item.updatedAt)}</li>`).join('');
         const tr = document.createElement('tr');
+        if (String(ws.id) === currentId) {
+          tr.className = 'active';
+        }
         tr.innerHTML = `
           <td>${ws.name || '-'}</td>
           <td class="mono">${ws.path || '-'}</td>
