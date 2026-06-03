@@ -278,6 +278,40 @@ def _rewrite_web_query(text: str) -> str:
     return " ".join(keywords[:8]) if keywords else raw
 
 
+def _web_query_variants(text: str) -> list[str]:
+    raw = str(text or "").strip()
+    if not raw:
+        return []
+
+    low = raw.lower()
+    variants: list[str] = [raw]
+
+    rewritten = _rewrite_web_query(raw)
+    if rewritten and rewritten.lower() != raw.lower():
+        variants.append(rewritten)
+
+    ranking_markers = ("liste", "top", "ranking", "schlaust", "beste", "groesste", "größte")
+    if any(marker in low for marker in ranking_markers):
+        kws = sorted(_web_query_keywords(raw))
+        if kws:
+            head = " ".join(kws[:6])
+            variants.append(f"{head} ranking liste")
+            variants.append(f"{head} top 10")
+        if any(k in low for k in ("schlaust", "intelligen", "iq", "genie")):
+            variants.append("iq ranking menschen liste")
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for v in variants:
+        cleaned = " ".join(str(v).split())
+        key = cleaned.lower()
+        if len(cleaned) < 3 or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cleaned)
+    return deduped[:5]
+
+
 def _filter_relevant_web_hits(query: str, hits: list[dict[str, str]], limit: int) -> list[dict[str, str]]:
     q_keywords = _web_query_keywords(query)
     if not q_keywords:
@@ -295,6 +329,12 @@ def _filter_relevant_web_hits(query: str, hits: list[dict[str, str]], limit: int
     scored.sort(key=lambda item: item[0], reverse=True)
     positives = [item for score, item in scored if score > 0]
     if positives:
+        q_low = str(query or "").lower()
+        ranking_query = any(marker in q_low for marker in ("liste", "top", "ranking", "schlaust", "beste", "groesste", "größte"))
+        if ranking_query and len(positives) < min(limit, 3):
+            need = min(limit, 3) - len(positives)
+            extras = [item for score, item in scored if score <= 0][:need]
+            return (positives + extras)[:limit]
         return positives[:limit]
     return hits[: min(limit, 2)]
 
@@ -305,47 +345,33 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
         return []
 
     limit = max(1, min(int(top_k or 3), 10))
+    candidate_limit = max(limit * 4, 16)
+    search_terms = _web_query_variants(q)
+    if not search_terms:
+        search_terms = [q]
     timeout = httpx.Timeout(timeout=10.0, connect=5.0, read=10.0, write=10.0, pool=10.0)
     url = "https://api.duckduckgo.com/"
-    params = {
-        "q": q,
-        "format": "json",
-        "no_html": "1",
-        "no_redirect": "1",
-        "skip_disambig": "1",
-    }
-
     web_headers = {
         "User-Agent": "LLM-RAG/1.0 (+local)",
         "Accept": "application/json,text/plain,*/*",
     }
 
-    try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=RAG_WEB_VERIFY_TLS, headers=web_headers) as client:
-            r = await client.get(url, params=params)
-            if r.status_code != 200:
-                return []
-            data = r.json() if r.text else {}
-    except Exception:
-        return []
-
     results: list[dict[str, str]] = []
 
-    abstract_text = str(data.get("AbstractText") or "").strip()
-    abstract_url = str(data.get("AbstractURL") or "").strip()
-    heading = str(data.get("Heading") or "").strip() or "DuckDuckGo"
-    if abstract_text:
+    def _append_result(title: str, url_value: str, snippet: str) -> None:
+        if not str(snippet or "").strip():
+            return
         results.append(
             {
-                "title": heading,
-                "url": abstract_url,
-                "snippet": abstract_text,
+                "title": str(title or "Web").strip() or "Web",
+                "url": str(url_value or "").strip(),
+                "snippet": str(snippet or "").strip(),
             }
         )
 
     def add_related(items: list[Any]) -> None:
         for item in items:
-            if len(results) >= limit:
+            if len(results) >= candidate_limit:
                 return
             if isinstance(item, dict) and isinstance(item.get("Topics"), list):
                 add_related(item.get("Topics") or [])
@@ -356,15 +382,33 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
             first_url = str(item.get("FirstURL") or "").strip()
             if text:
                 title = text.split(" - ", 1)[0].strip() or "Web"
-                results.append(
-                    {
-                        "title": title,
-                        "url": first_url,
-                        "snippet": text,
-                    }
-                )
+                _append_result(title, first_url, text)
 
-    add_related(data.get("RelatedTopics") or [])
+    # Try DuckDuckGo for original + first expansion term.
+    for term in search_terms[:2]:
+        params = {
+            "q": term,
+            "format": "json",
+            "no_html": "1",
+            "no_redirect": "1",
+            "skip_disambig": "1",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=RAG_WEB_VERIFY_TLS, headers=web_headers) as client:
+                r = await client.get(url, params=params)
+                if r.status_code != 200:
+                    continue
+                data = r.json() if r.text else {}
+        except Exception:
+            continue
+
+        abstract_text = str(data.get("AbstractText") or "").strip()
+        abstract_url = str(data.get("AbstractURL") or "").strip()
+        heading = str(data.get("Heading") or "").strip() or "DuckDuckGo"
+        _append_result(heading, abstract_url, abstract_text)
+        add_related(data.get("RelatedTopics") or [])
+        if len(results) >= candidate_limit:
+            break
 
     async def wikidata_hits(term: str, lang: str) -> list[dict[str, str]]:
         try:
@@ -408,21 +452,24 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
         except Exception:
             return []
 
-    if len(results) >= limit:
-        return results[:limit]
+    if len(results) >= candidate_limit:
+        return _filter_relevant_web_hits(q, results, limit)
 
     # Additional fallback provider: Wikidata often improves entity-centric questions.
-    for lang in ("de", "en"):
-        if len(results) >= limit:
-            break
-        for item in await wikidata_hits(q, lang):
-            key = f"{item.get('title','')}|{item.get('url','')}"
-            seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
-            if key in seen:
-                continue
-            results.append(item)
-            if len(results) >= limit:
+    for term in search_terms:
+        for lang in ("de", "en"):
+            if len(results) >= candidate_limit:
                 break
+            for item in await wikidata_hits(term, lang):
+                key = f"{item.get('title','')}|{item.get('url','')}"
+                seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
+                if key in seen:
+                    continue
+                results.append(item)
+                if len(results) >= candidate_limit:
+                    break
+        if len(results) >= candidate_limit:
+            break
 
     # Fallback: Wikipedia search + summary (de, then en) improves factual queries.
     async def wiki_hits(lang: str, term: str) -> list[dict[str, str]]:
@@ -471,17 +518,20 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
         except Exception:
             return []
 
-    for lang in ("de", "en"):
-        if len(results) >= limit:
-            break
-        for item in await wiki_hits(lang, q):
-            key = f"{item.get('title','')}|{item.get('url','')}"
-            seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
-            if key in seen:
-                continue
-            results.append(item)
-            if len(results) >= limit:
+    for term in search_terms:
+        for lang in ("de", "en"):
+            if len(results) >= candidate_limit:
                 break
+            for item in await wiki_hits(lang, term):
+                key = f"{item.get('title','')}|{item.get('url','')}"
+                seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
+                if key in seen:
+                    continue
+                results.append(item)
+                if len(results) >= candidate_limit:
+                    break
+        if len(results) >= candidate_limit:
+            break
 
     # Last resort fallback: use curl subprocess (works when service Python TLS stack fails).
     def curl_json(url: str) -> dict[str, Any] | None:
@@ -494,30 +544,33 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
         except Exception:
             return None
 
-    q_enc = quote_plus(q)
-    search_url = (
-        "https://de.wikipedia.org/w/api.php"
-        f"?action=query&list=search&srsearch={q_enc}&format=json&srlimit={min(limit, 5)}&utf8=1"
-    )
-    search_data = curl_json(search_url) or {}
-    entries = ((search_data.get("query") or {}).get("search") or []) if isinstance(search_data, dict) else []
-    for entry in entries:
-        if len(results) >= limit:
+    for term in search_terms:
+        q_enc = quote_plus(term)
+        search_url = (
+            "https://de.wikipedia.org/w/api.php"
+            f"?action=query&list=search&srsearch={q_enc}&format=json&srlimit={min(limit, 5)}&utf8=1"
+        )
+        search_data = curl_json(search_url) or {}
+        entries = ((search_data.get("query") or {}).get("search") or []) if isinstance(search_data, dict) else []
+        for entry in entries:
+            if len(results) >= candidate_limit:
+                break
+            title = str((entry or {}).get("title") or "").strip()
+            if not title:
+                continue
+            sum_url = f"https://de.wikipedia.org/api/rest_v1/page/summary/{quote(title, safe='')}"
+            sum_data = curl_json(sum_url) or {}
+            snippet = str(sum_data.get("extract") or "").strip()
+            page_url = str(((sum_data.get("content_urls") or {}).get("desktop") or {}).get("page") or "").strip()
+            if not snippet:
+                continue
+            key = f"{title}|{page_url}"
+            seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
+            if key in seen:
+                continue
+            results.append({"title": title, "url": page_url, "snippet": snippet})
+        if len(results) >= candidate_limit:
             break
-        title = str((entry or {}).get("title") or "").strip()
-        if not title:
-            continue
-        sum_url = f"https://de.wikipedia.org/api/rest_v1/page/summary/{quote(title, safe='')}"
-        sum_data = curl_json(sum_url) or {}
-        snippet = str(sum_data.get("extract") or "").strip()
-        page_url = str(((sum_data.get("content_urls") or {}).get("desktop") or {}).get("page") or "").strip()
-        if not snippet:
-            continue
-        key = f"{title}|{page_url}"
-        seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
-        if key in seen:
-            continue
-        results.append({"title": title, "url": page_url, "snippet": snippet})
 
     filtered = _filter_relevant_web_hits(q, results, limit)
     if filtered:

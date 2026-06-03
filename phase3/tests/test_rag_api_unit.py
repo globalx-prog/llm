@@ -93,6 +93,13 @@ class RagApiUnitTests(unittest.TestCase):
         rewritten = self.mod._rewrite_web_query("wer ist der schlauste mensch")
         self.assertIn("iq", rewritten)
 
+    def test_web_query_variants_expand_ranking_questions(self):
+        variants = self.mod._web_query_variants("liste die 10 schlausten menschen")
+        self.assertGreaterEqual(len(variants), 2)
+        joined = " | ".join(variants).lower()
+        self.assertIn("iq", joined)
+        self.assertTrue(("ranking" in joined) or ("top 10" in joined))
+
     def test_filter_relevant_web_hits_prefers_matching_entries(self):
         hits = [
             {"title": "Die Zauberer vom Waverly Place", "url": "https://de.wikipedia.org/wiki/Die_Zauberer_vom_Waverly_Place", "snippet": "US-Serie"},
@@ -100,6 +107,16 @@ class RagApiUnitTests(unittest.TestCase):
         ]
         filtered = self.mod._filter_relevant_web_hits("wer ist der schlauste mensch", hits, 5)
         self.assertTrue(filtered)
+        self.assertEqual("Intelligenzquotient", filtered[0].get("title"))
+
+    def test_filter_relevant_web_hits_keeps_extra_candidates_for_ranking(self):
+        hits = [
+            {"title": "Intelligenzquotient", "url": "https://de.wikipedia.org/wiki/Intelligenzquotient", "snippet": "IQ ist ein Kennwert..."},
+            {"title": "Begabung", "url": "https://de.wikipedia.org/wiki/Begabung", "snippet": "Begabung beschreibt leistungsrelevante Anlagen."},
+            {"title": "Foo", "url": "https://example.org/foo", "snippet": "bar"},
+        ]
+        filtered = self.mod._filter_relevant_web_hits("liste die 10 schlausten menschen", hits, 5)
+        self.assertGreaterEqual(len(filtered), 2)
         self.assertEqual("Intelligenzquotient", filtered[0].get("title"))
 
     def test_web_search_uses_wikidata_provider(self):
