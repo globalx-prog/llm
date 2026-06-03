@@ -1,0 +1,3 @@
+autostart-install=manual-required
+reason=sudo-noninteractive-unavailable
+run=sudo /home/clemi/projekte/LLM/phase6/install_autostart_stack.sh

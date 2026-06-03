@@ -21,6 +21,7 @@ ACCESS_POLICY = dict(pipeline.cfg.get("access_policy", {}))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:4173", "http://localhost:4173"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|100\.\d+\.\d+\.\d+|[A-Za-z0-9.-]+\.ts\.net)(:\d+)?$",
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
