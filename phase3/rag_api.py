@@ -17,6 +17,7 @@ from rag_pipeline import RagPipeline
 CONFIG_PATH = os.getenv("RAG_CONFIG", "/home/clemi/projekte/LLM/phase3/rag_config.yaml")
 ROUTER_BASE = os.getenv("ROUTER_BASE", "http://127.0.0.1:4000")
 ROUTER_KEY = os.getenv("ROUTER_KEY", "change_me_phase2")
+RAG_ROUTER_TIMEOUT_S = float(os.getenv("RAG_ROUTER_TIMEOUT_S", "130"))
 USER_REGISTRY_PATH = os.getenv("USER_REGISTRY_PATH", "/data/rag/user_registry.json")
 
 try:
@@ -484,13 +485,32 @@ async def answer(
         "max_tokens": 400,
     }
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        r = await client.post(
-            f"{ROUTER_BASE}/v1/chat/completions",
-            json=payload,
-            headers={"Authorization": f"Bearer {ROUTER_KEY}"},
-        )
-        data = r.json()
+    timeout = httpx.Timeout(
+        timeout=RAG_ROUTER_TIMEOUT_S,
+        connect=min(10.0, RAG_ROUTER_TIMEOUT_S),
+        read=RAG_ROUTER_TIMEOUT_S,
+        write=min(30.0, RAG_ROUTER_TIMEOUT_S),
+        pool=min(30.0, RAG_ROUTER_TIMEOUT_S),
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.post(
+                f"{ROUTER_BASE}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {ROUTER_KEY}"},
+            )
+            data = r.json()
+    except httpx.ReadTimeout as exc:
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"Router-Timeout nach {RAG_ROUTER_TIMEOUT_S:.0f}s bei Modell {req.model}. "
+                "Bitte kleineres Modell waehlen oder Anfrage reduzieren."
+            ),
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Router-Verbindungsfehler: {exc}") from exc
 
     if r.status_code >= 400:
         err_obj = data.get("error", {}) if isinstance(data, dict) else {}

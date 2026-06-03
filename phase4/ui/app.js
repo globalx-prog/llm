@@ -27,6 +27,8 @@ const state = {
   users: [],
   workspaces: [],
   activeWorkspaceId: null,
+  projects: [],
+  activeProject: null,
   modelStatus: {},
   audit: [],
   history: [],
@@ -41,6 +43,8 @@ const USERS_KEY = 'llm-users-v1';
 const SESSION_KEY = 'llm-active-session-v1';
 const WORKSPACES_KEY = 'llm-workspaces-v1';
 const ACTIVE_WORKSPACE_KEY = 'llm-active-workspace-v1';
+const PROJECTS_KEY = 'llm-projects-v1';
+const ACTIVE_PROJECT_KEY = 'llm-active-project-v1';
 const WORKSPACE_TREE_PREFIX = 'llm-workspace-tree-v1';
 const WORKSPACE_PICKER_RESULT_KEY = 'llm-workspace-picker-result-v1';
 
@@ -178,6 +182,164 @@ function defaultUsers() {
     { user: 'service-bot', role: 'service', projects: ['mim-llm'] },
     { user: 'reviewer-demo', role: 'reviewer', projects: ['mim-llm'] },
   ];
+}
+
+function defaultProjects() {
+  return ['mim-llm'];
+}
+
+function normalizeProjectName(value) {
+  return String(value || '').trim();
+}
+
+function saveProjects() {
+  try {
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(state.projects));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function saveActiveProject() {
+  try {
+    localStorage.setItem(ACTIVE_PROJECT_KEY, String(state.activeProject || ''));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function renderProjectSelect() {
+  const select = el('projectSelect');
+  if (!select) return;
+  select.innerHTML = '';
+  state.projects.forEach((projectName) => {
+    const option = document.createElement('option');
+    option.value = projectName;
+    option.textContent = projectName;
+    if (projectName === state.activeProject) option.selected = true;
+    select.appendChild(option);
+  });
+}
+
+function addProject(projectName) {
+  const cleaned = normalizeProjectName(projectName);
+  if (!cleaned) return '';
+  if (!state.projects.includes(cleaned)) {
+    state.projects.push(cleaned);
+    state.projects.sort((a, b) => a.localeCompare(b));
+    saveProjects();
+  }
+  return cleaned;
+}
+
+function activateProject(projectName, options = {}) {
+  const cleaned = addProject(projectName);
+  if (!cleaned) return false;
+
+  const { updateWorkspace = true, auditType = 'project_switch' } = options;
+  state.activeProject = cleaned;
+  saveActiveProject();
+
+  if (el('projectInput')) el('projectInput').value = cleaned;
+  renderProjectSelect();
+
+  const ws = activeWorkspace();
+  if (updateWorkspace && ws) {
+    ws.projectHint = cleaned;
+    ws.lastUsedAt = new Date().toISOString();
+    saveWorkspaces();
+  }
+
+  renderProjectStructure();
+  updateChatStashFromInputs();
+  addAudit(auditType, cleaned);
+  return true;
+}
+
+function loadProjects() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]');
+    if (Array.isArray(parsed)) {
+      state.projects = parsed.map((p) => normalizeProjectName(p)).filter(Boolean);
+    }
+  } catch {
+    state.projects = [];
+  }
+
+  if (!state.projects.length) {
+    state.projects = defaultProjects();
+  }
+
+  state.workspaces.forEach((ws) => {
+    const hint = normalizeProjectName(ws?.projectHint || '');
+    if (hint && !state.projects.includes(hint)) state.projects.push(hint);
+  });
+
+  (state.users || []).forEach((u) => {
+    (u?.projects || []).forEach((projectName) => {
+      const cleaned = normalizeProjectName(projectName);
+      if (cleaned && !state.projects.includes(cleaned)) state.projects.push(cleaned);
+    });
+  });
+
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(`${CHAT_STORE_PREFIX}:`)) continue;
+      const raw = localStorage.getItem(key) || '{}';
+      const parsed = JSON.parse(raw);
+      const chats = Array.isArray(parsed?.chats) ? parsed.chats : [];
+      chats.forEach((chat) => {
+        const project = normalizeProjectName(chat?.stash?.project || '');
+        if (project && !state.projects.includes(project)) state.projects.push(project);
+      });
+    }
+  } catch {
+    // ignore storage read/parse errors
+  }
+
+  state.projects = [...new Set(state.projects)].sort((a, b) => a.localeCompare(b));
+
+  try {
+    state.activeProject = normalizeProjectName(localStorage.getItem(ACTIVE_PROJECT_KEY) || '');
+  } catch {
+    state.activeProject = '';
+  }
+
+  const wsHint = normalizeProjectName(activeWorkspace()?.projectHint || '');
+  if (!state.activeProject) {
+    state.activeProject = wsHint || state.projects[0] || 'mim-llm';
+  }
+  if (!state.projects.includes(state.activeProject)) {
+    state.projects.unshift(state.activeProject);
+  }
+
+  state.projects = [...new Set(state.projects)].sort((a, b) => a.localeCompare(b));
+  if (el('projectInput')) el('projectInput').value = state.activeProject;
+  saveProjects();
+  saveActiveProject();
+  renderProjectSelect();
+}
+
+function openProjectFromPrompt() {
+  const preset = normalizeProjectName(el('projectInput')?.value || state.activeProject || 'mim-llm');
+  const picked = window.prompt('Projektname oeffnen', preset);
+  if (picked === null) return;
+  if (!activateProject(picked, { updateWorkspace: true, auditType: 'project_open_prompt' })) {
+    setStatus('Ungueltiger Projektname.', true);
+  } else {
+    setStatus(`Projekt geoeffnet: ${normalizeProjectName(picked)}`);
+  }
+}
+
+function createProjectFromPrompt() {
+  const picked = window.prompt('Neues Projekt anlegen', 'neues-projekt');
+  if (picked === null) return;
+  if (!activateProject(picked, { updateWorkspace: true, auditType: 'project_new' })) {
+    setStatus('Projekt konnte nicht angelegt werden.', true);
+  } else {
+    setStatus(`Projekt angelegt: ${normalizeProjectName(picked)}`);
+  }
 }
 
 function normalizeUser(name) {
@@ -430,7 +592,7 @@ function activateWorkspaceSession(ws) {
   state.selectedFsPath = null;
   if (el('workspaceNameInput')) el('workspaceNameInput').value = ws.name || '';
   if (el('workspacePathInput')) el('workspacePathInput').value = ws.path || '';
-  el('projectInput').value = ws.projectHint || el('projectInput').value || 'mim-llm';
+  activateProject(ws.projectHint || el('projectInput')?.value || 'mim-llm', { updateWorkspace: false, auditType: 'project_sync_workspace' });
   loadChats();
   renderChatSessions();
   switchChat(state.activeChatId);
@@ -617,57 +779,49 @@ function renderModelHealth() {
 }
 
 async function probeModel(model) {
-  const fallbackUser = normalizeUser(el('userInput')?.value || 'clemi') || 'clemi';
-  const project = (el('projectInput')?.value || 'mim-llm').trim() || 'mim-llm';
-
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 25000);
   try {
-    const routerData = await requestJson(`${ROUTER_BASE}/v1/chat/completions`, {
+    const res = await fetch(`${ROUTER_BASE}/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${ROUTER_KEY}`,
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: 'OK' }],
         max_tokens: 8,
       }),
     });
-    const routerAnswer = String(routerData?.choices?.[0]?.message?.content || '').trim();
-    if (routerAnswer) {
-      return { ok: true, reason: '' };
-    }
-  } catch {
-    // Fallback to RAG probe when direct router call is blocked by browser/network policy.
-  }
 
-  try {
-    const data = await requestJson(`${API_BASE}/v1/rag/answer`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User': fallbackUser,
-        'X-Role': 'admin',
-      },
-      body: JSON.stringify({
-        query: 'Antworte nur mit OK.',
-        model,
-        project,
-        top_k: 1,
-      }),
-    });
-
-    const answer = String(data?.answer || '').trim();
-    if (!answer || answer === 'Keine Antwort vom Modell erhalten.') {
-      return { ok: false, reason: 'keine Modellantwort' };
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
     }
+
+    if (!res.ok) {
+      const detail = data?.error?.message || data?.detail || `HTTP ${res.status}`;
+      return { ok: false, reason: String(detail) };
+    }
+
+    const answer = String(data?.choices?.[0]?.message?.content || '').trim();
+    if (!answer) return { ok: false, reason: 'keine Modellantwort' };
     return { ok: true, reason: '' };
   } catch (err) {
+    if (err?.name === 'AbortError') {
+      return { ok: false, reason: 'Probe-Timeout nach 25s' };
+    }
     const reason = String(err);
     if (reason.includes('NetworkError')) {
-      return { ok: false, reason: 'Netzwerkfehler zwischen Browser und API (fetch)' };
+      return { ok: false, reason: 'Netzwerkfehler zwischen Browser und Router (fetch)' };
     }
     return { ok: false, reason };
+  } finally {
+    window.clearTimeout(timeout);
   }
 }
 
@@ -1656,10 +1810,19 @@ el('workspaceDirInput').addEventListener('change', (ev) => {
   ev.target.value = '';
 });
 el('newWorkspaceBtn').addEventListener('click', createWorkspaceFromPrompt);
+el('projectSelect').addEventListener('change', (ev) => {
+  const nextProject = normalizeProjectName(ev.target.value || '');
+  if (!nextProject) return;
+  activateProject(nextProject, { updateWorkspace: true, auditType: 'project_switch_select' });
+  setStatus(`Projekt gewechselt: ${nextProject}`);
+});
+el('openProjectBtn').addEventListener('click', openProjectFromPrompt);
+el('newProjectBtn').addEventListener('click', createProjectFromPrompt);
 
 window.addEventListener('storage', (ev) => {
   if (ev.key === WORKSPACES_KEY) {
     loadWorkspaces();
+    loadProjects();
     renderProjectStructure();
     return;
   }
@@ -1685,14 +1848,9 @@ el('modelInput').addEventListener('change', () => {
 });
 
 el('projectInput').addEventListener('input', () => {
-  const ws = activeWorkspace();
-  if (ws) {
-    ws.projectHint = el('projectInput').value.trim() || 'mim-llm';
-    ws.lastUsedAt = new Date().toISOString();
-    saveWorkspaces();
-  }
-  renderProjectStructure();
-  updateChatStashFromInputs();
+  const value = normalizeProjectName(el('projectInput').value);
+  if (!value) return;
+  activateProject(value, { updateWorkspace: true, auditType: 'project_input_edit' });
 });
 
 el('topKInput').addEventListener('input', updateChatStashFromInputs);
@@ -1845,6 +2003,7 @@ el('reindexBtn').addEventListener('click', async () => {
 
 (async function boot() {
   loadWorkspaces();
+  loadProjects();
   currentProjectStructure = loadWorkspaceTree(state.activeWorkspaceId);
   const ws = activeWorkspace();
   if (ws) {

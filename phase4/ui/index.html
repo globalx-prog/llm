@@ -49,6 +49,14 @@
       <a class="topLink inline" href="workspaces.html" target="_blank" rel="noopener noreferrer">Workspace Uebersicht oeffnen</a>
 
       <h2>Projektkontext</h2>
+      <label>Aktives Projekt
+        <select id="projectSelect"></select>
+        <p class="fieldHelp">Projekt bestimmt den RAG-Kontext. Du kannst Projekte wie Workspaces direkt wechseln oder neu anlegen.</p>
+      </label>
+      <div class="workspaceTools">
+        <button id="openProjectBtn" class="ghostBtn" type="button">Projekt oeffnen</button>
+        <button id="newProjectBtn" class="ghostBtn" type="button">Neues Projekt anlegen</button>
+      </div>
       <label>Projekt
         <input id="projectInput" value="mim-llm" />
         <p class="fieldHelp">Projektfilter fuer RAG. Nur Quellen aus diesem Projektkontext werden bevorzugt gewichtet.</p>
