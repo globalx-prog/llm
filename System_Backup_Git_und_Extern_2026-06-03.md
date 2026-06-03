@@ -67,9 +67,13 @@ sudo rsync -aHAX /usr/local/ "$DEST/usr_local"
 ```
 
 ## 4) Git-Only fuer Infrastruktur
+Status: geprueft. Der Ablauf funktioniert, aber `git add .` kann ungewollte Dateien (z. B. Caches) mitnehmen.
+
+Empfohlene Variante:
 ```bash
 cd /home/clemi/projekte/LLM
-git add .
+git status --short
+git add 00_Vorbereitung.md Phase_* phase3 phase4 backup llm-audit
 git commit -m "Backup snapshot: configs + docs + scripts"
 git push
 ```
@@ -99,6 +103,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now llm-router.service llm-rag-api.service llm-model-fast.service llm-model-quality.service
 ```
 
+Ausfuehrbares Skript (sicher mit Check/Dry-Run):
+```bash
+chmod +x /home/clemi/projekte/LLM/backup/restore_after_reinstall.sh
+/home/clemi/projekte/LLM/backup/restore_after_reinstall.sh --backup-dir /pfad/zum/backup --check-only
+```
+
 Hinweis: Secrets/Schluessel (SSH, TLS, Tokens) bewusst getrennt und sicher sichern. Nicht unverschluesselt in Git ablegen.
 
 ## 6) Wenn du wirklich 1:1 willst (inkl. Boot/Partition)
@@ -108,6 +118,14 @@ Beispiel mit Clonezilla:
 - Vollabbild auf externe Festplatte erstellen
 - Regelmaessig inkrementelle Dateibackups (oben) weiterfahren
 - Restore-Test auf Ersatzsystem durchfuehren
+
+Preflight und Runbook:
+```bash
+chmod +x /home/clemi/projekte/LLM/backup/preflight_image_backup.sh
+/home/clemi/projekte/LLM/backup/preflight_image_backup.sh
+```
+
+- Runbook: `/home/clemi/projekte/LLM/backup/clonezilla_1to1_runbook.md`
 
 ## 7) Empfehlung fuer Betrieb
 - Taeglich inkrementelles rsync-Backup per systemd timer
