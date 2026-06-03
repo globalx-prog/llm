@@ -13,8 +13,15 @@ const CHAT_HISTORY_KEY = 'llm-controldeck-chat-history-v1';
 const MODEL_PROFILES = {
   'gemma2-2b': {
     css: 'gemma2',
+    label: 'Gemma2 2B',
     description:
       'Gemma2 2B (Modelltyp gemma2, 2.6B Parameter): reales Serving ueber Ollama, gut fuer robuste lokale Inferenz bei moderatem Ressourcenbedarf.',
+  },
+  'gemma3-27b': {
+    css: 'gemma3',
+    label: 'Gemma3 27B',
+    description:
+      'Gemma3 27B (Modelltyp gemma3, 27B Parameter): komplexes Modell fuer tieferes Reasoning und laengere, differenzierte Antworten.',
   },
 };
 
@@ -22,10 +29,11 @@ function updateModelInfo() {
   const current = el('modelInput').value;
   const profile = MODEL_PROFILES[current] || MODEL_PROFILES['gemma2-2b'];
   const box = el('modelInfo');
-  box.classList.remove('gemma2');
+  box.classList.remove('gemma2', 'gemma3');
   box.classList.add(profile.css);
   el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.`;
   el('modelExplainLink').href = `modelle.html#${current}`;
+  el('modelExplainLink').textContent = `Was bedeutet ${profile.label}?`;
 }
 
 function loadHistory() {

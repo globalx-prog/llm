@@ -21,14 +21,17 @@
       <h2>Projektkontext</h2>
       <label>Projekt
         <input id="projectInput" value="mim-llm" />
+        <p class="fieldHelp">Projektfilter fuer RAG. Nur Quellen aus diesem Projektkontext werden bevorzugt gewichtet.</p>
       </label>
       <label>Top-K
         <input id="topKInput" type="number" min="1" max="20" value="5" />
+        <p class="fieldHelp">Anzahl der beruecksichtigten Treffer aus der Suche. Hoeher = mehr Kontext, aber auch mehr Rauschen.</p>
       </label>
 
       <h2>Login / Rolle</h2>
       <label>User
         <input id="userInput" placeholder="z. B. clemi" value="clemi" />
+        <p class="fieldHelp">Logischer Nutzername fuer Header, Audit und Nachvollziehbarkeit von Aktionen.</p>
       </label>
       <label>Rolle
         <select id="roleInput">
@@ -36,15 +39,18 @@
           <option value="service">service-context</option>
           <option value="reviewer">review-only</option>
         </select>
+        <p class="fieldHelp">Berechtigungsprofil fuer die Session. Nur admin/service duerfen Write Actions ausfuehren.</p>
       </label>
       <button id="loginBtn">Login</button>
 
       <h2>Write Action</h2>
       <label>Grund
         <input id="reasonInput" placeholder="Warum wird geschrieben?" value="manual-reindex" />
+        <p class="fieldHelp">Pflichtgrund fuer schreibende Operationen. Wird als Governance-Metadatum im Audit verwendet.</p>
       </label>
       <label>Task-ID
         <input id="taskInput" placeholder="z. B. P4-INGEST-01" value="P4-INGEST-01" />
+        <p class="fieldHelp">Eindeutige Referenz auf Ticket, Change oder Arbeitspaket fuer spaetere Rueckverfolgung.</p>
       </label>
       <button id="reindexBtn">Re-Index starten</button>
       <p class="hint">Nur Rollen admin/service duerfen schreiben.</p>
@@ -56,14 +62,34 @@
         <label>Modell
           <select id="modelInput">
             <option value="gemma2-2b">Gemma2 2B - reales Serving</option>
+            <option value="gemma3-27b">Gemma3 27B - komplexes Reasoning</option>
           </select>
+          <p class="fieldHelp">Waehlt das Antwortmodell. Gemma2 ist schneller, Gemma3 liefert meist tiefere und ausfuehrlichere Antworten.</p>
         </label>
       </div>
 
       <section id="modelInfo" class="modelInfo gemma2" aria-live="polite">
         <h3>Modellprofil</h3>
         <p id="modelDesc"></p>
-        <a id="modelExplainLink" class="modelLink" href="modelle.html#gemma2-2b" target="_blank" rel="noopener noreferrer">Was bedeutet Gemma2 2B?</a>
+        <a id="modelExplainLink" class="modelLink" href="modelle.html#gemma2-2b" target="_blank" rel="noopener noreferrer">Was bedeutet dieses Modell?</a>
+      </section>
+
+      <section class="workflowGuide" aria-label="Projektworkflow">
+        <h3>Projektworkflow: Anlegen und Bearbeiten</h3>
+        <ol>
+          <li>
+            Projekt festlegen: Trage im Feld <strong>Projekt</strong> einen neuen oder bestehenden Namen ein (z. B. <span class="monoInline">mim-llm</span>). Dieser Name ist dein RAG-Kontext.
+          </li>
+          <li>
+            Inhalte einpflegen: Melde dich mit Rolle <strong>admin</strong> oder <strong>service</strong> an und starte <strong>Re-Index</strong> mit Grund + Task-ID, damit neue/geaenderte Dateien in den Projektindex uebernommen werden.
+          </li>
+          <li>
+            Inhaltlich arbeiten: Stelle Fragen im Chat, waehle Modell und Top-K passend zur Aufgabe. Fuer schnelle Antworten eher kleineres Top-K, fuer breite Recherche eher groesseres Top-K.
+          </li>
+          <li>
+            Nachvollziehen und iterieren: Pruefe Quellen, Suchverlauf und Audit-Events. Passe Dateien an, indexiere neu und wiederhole den Zyklus.
+          </li>
+        </ol>
       </section>
 
       <div id="messages" class="messages"></div>
@@ -76,6 +102,7 @@
 
       <div class="composer">
         <textarea id="promptInput" rows="4" placeholder="Frage mit Projektkontext stellen..."></textarea>
+        <p class="fieldHelp">Dein Arbeitsauftrag an das Modell. Konkrete Ziele, Randbedingungen und Ausgabeformat verbessern die Antwortqualitaet.</p>
         <button id="sendBtn">Senden</button>
       </div>
     </section>

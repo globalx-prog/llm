@@ -67,6 +67,16 @@ body {
 h2 { margin-top: .2rem; margin-bottom: .75rem; font-size: 1.1rem; }
 h3 { margin-top: .95rem; margin-bottom: .55rem; font-size: .94rem; }
 label { display: block; font-size: .86rem; margin-bottom: .6rem; }
+.fieldHelp {
+  margin: .38rem 0 0;
+  font-size: .78rem;
+  line-height: 1.32;
+  color: #214658;
+  background: linear-gradient(180deg, #f7fbff 0%, #edf7fb 100%);
+  border: 1px solid #0f4e672b;
+  border-radius: 8px;
+  padding: .42rem .55rem;
+}
 input, select, textarea, button {
   width: 100%;
   padding: .62rem .7rem;
@@ -126,6 +136,38 @@ input:focus, select:focus, textarea:focus {
 }
 .modelLink:hover { filter: brightness(1.1); }
 .modelInfo.gemma2 { border-left-color: #4a5eb8; }
+.modelInfo.gemma3 { border-left-color: #0f7a67; }
+
+.workflowGuide {
+  margin: 0 auto .9rem;
+  max-width: 780px;
+  border: 1px solid #0f4e6730;
+  border-left: 5px solid #0f7a67;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8fcff 0%, #eef8f9 100%);
+  padding: .75rem .9rem;
+}
+.workflowGuide h3 {
+  margin: 0 0 .45rem;
+  font-size: .92rem;
+  letter-spacing: .02em;
+}
+.workflowGuide ol {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+.workflowGuide li {
+  margin-bottom: .38rem;
+  line-height: 1.34;
+  font-size: .85rem;
+}
+.monoInline {
+  font-family: "IBM Plex Mono", Consolas, monospace;
+  background: #f5f7fa;
+  border: 1px solid #d9dfe8;
+  border-radius: 6px;
+  padding: .08rem .32rem;
+}
 
 .messages {
   min-height: 420px;
