@@ -86,6 +86,14 @@ body {
 h2 { margin-top: .2rem; margin-bottom: .75rem; font-size: 1.1rem; }
 h3 { margin-top: .95rem; margin-bottom: .55rem; font-size: .94rem; }
 label { display: block; font-size: .86rem; margin-bottom: .6rem; }
+.workspaceTools {
+  display: flex;
+  gap: .45rem;
+  margin: .35rem 0 .55rem;
+}
+.workspaceTools .ghostBtn {
+  flex: 1;
+}
 .fieldHelp {
   margin: .38rem 0 0;
   font-size: .78rem;
@@ -168,6 +176,11 @@ input:focus, select:focus, textarea:focus {
 .chatSessionBtn.active {
   border-color: #0f4e6766;
   background: #ecf6fb;
+}
+.chatSessionBtn .meta {
+  display: inline-block;
+  margin-left: .4rem;
+  opacity: .7;
 }
 
 .modelInfo {
@@ -280,6 +293,45 @@ input:focus, select:focus, textarea:focus {
 .msg.user { background: #f1e4d2; border-left: 4px solid var(--accent); }
 .msg.bot { background: #ddf0e7; border-left: 4px solid var(--accent-2); }
 .composer { margin-top: .8rem; }
+.contextTools {
+  display: flex;
+  gap: .5rem;
+  margin: .5rem 0 .2rem;
+}
+.contextTools .ghostBtn {
+  margin: 0;
+}
+.contextFilesWrap h3 {
+  margin: .35rem 0;
+}
+.contextFiles {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 .45rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+}
+.contextFiles li {
+  background: #eef6fb;
+  border: 1px solid #0f4e6729;
+  border-radius: 999px;
+  padding: .22rem .5rem;
+  font-size: .74rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+}
+.contextRemove {
+  border: 0;
+  background: transparent;
+  color: #8b1e3f;
+  font-size: .9rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: auto;
+}
 .status { font-size: .9rem; padding: .55rem; border-radius: 8px; background: #fff; border: 1px solid #00000022; }
 .fsPanel {
   margin-bottom: .9rem;
@@ -335,6 +387,14 @@ input:focus, select:focus, textarea:focus {
   border-radius: 6px;
   padding: .05rem .22rem;
 }
+.fsNode.folder::before {
+  content: '▸ ';
+  opacity: .8;
+}
+.fsNode.file::before {
+  content: '• ';
+  opacity: .55;
+}
 .fsTree li.collapsed > ul {
   display: none;
 }
@@ -384,4 +444,5 @@ input:focus, select:focus, textarea:focus {
   .messages { min-height: 300px; }
   .chatControlGrid { grid-template-columns: 1fr; }
   .chatSessionTools { width: 100%; }
+  .contextTools { flex-direction: column; }
 }

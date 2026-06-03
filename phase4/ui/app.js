@@ -1,8 +1,12 @@
 const API_BASE = window.LLM_API_BASE || `${window.location.protocol}//${window.location.hostname}:4100`;
 
 const el = (id) => document.getElementById(id);
+
 const state = {
   session: null,
+  users: [],
+  workspaces: [],
+  activeWorkspaceId: null,
   audit: [],
   history: [],
   chats: {},
@@ -11,7 +15,10 @@ const state = {
 };
 
 const HISTORY_KEY = 'llm-controldeck-history-v1';
-const CHAT_STORE_KEY = 'llm-controldeck-chat-store-v2';
+const CHAT_STORE_PREFIX = 'llm-controldeck-chats-v3';
+const USERS_KEY = 'llm-users-v1';
+const SESSION_KEY = 'llm-active-session-v1';
+const WORKSPACES_KEY = 'llm-workspaces-v1';
 
 const PROJECT_STRUCTURE = {
   name: 'LLM/',
@@ -37,7 +44,7 @@ const PROJECT_STRUCTURE = {
       children: [
         {
           name: 'ui/',
-          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html'],
+          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'hilfe-github-tailscale.html', 'login-prozess.html'],
         },
       ],
     },
@@ -100,6 +107,243 @@ function nowTs() {
 
 function chatId() {
   return `chat-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function workspaceId() {
+  return `ws-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function defaultWorkspaces() {
+  return [
+    {
+      id: 'ws-default',
+      name: 'LLM (Standard)',
+      path: '/home/clemi/projekte/LLM',
+      createdAt: new Date().toISOString(),
+      lastUsedAt: new Date().toISOString(),
+      projectHint: 'mim-llm',
+      executedChats: [],
+    },
+  ];
+}
+
+function defaultUsers() {
+  return [
+    { user: 'clemi', role: 'admin', projects: ['mim-llm'] },
+    { user: 'service-bot', role: 'service', projects: ['mim-llm'] },
+    { user: 'reviewer-demo', role: 'reviewer', projects: ['mim-llm'] },
+  ];
+}
+
+function normalizeUser(name) {
+  return String(name || '').trim();
+}
+
+function roleLabel(role) {
+  if (role === 'admin') return 'admin-owner';
+  if (role === 'service') return 'service-context';
+  return 'review-only';
+}
+
+function findUser(username) {
+  return state.users.find((u) => u.user === normalizeUser(username)) || null;
+}
+
+function sessionChatStoreKey() {
+  const user = normalizeUser(state.session?.user || 'guest').toLowerCase();
+  const workspace = String(state.activeWorkspaceId || 'ws-default');
+  return `${CHAT_STORE_PREFIX}:${user}:${workspace}`;
+}
+
+function activeWorkspace() {
+  return state.workspaces.find((ws) => ws.id === state.activeWorkspaceId) || null;
+}
+
+function saveWorkspaces() {
+  try {
+    localStorage.setItem(WORKSPACES_KEY, JSON.stringify(state.workspaces));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function renderWorkspaceSelect() {
+  const select = el('workspaceSelect');
+  if (!select) return;
+  select.innerHTML = '';
+
+  state.workspaces.forEach((ws) => {
+    const option = document.createElement('option');
+    option.value = ws.id;
+    option.textContent = `${ws.name} (${ws.path || '-'})`;
+    if (ws.id === state.activeWorkspaceId) option.selected = true;
+    select.appendChild(option);
+  });
+}
+
+function loadWorkspaces() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(WORKSPACES_KEY) || '[]');
+    if (Array.isArray(parsed) && parsed.length) {
+      state.workspaces = parsed
+        .filter((ws) => ws && ws.id && ws.name)
+        .map((ws) => ({
+          id: String(ws.id),
+          name: String(ws.name),
+          path: String(ws.path || '').trim(),
+          createdAt: String(ws.createdAt || new Date().toISOString()),
+          lastUsedAt: String(ws.lastUsedAt || new Date().toISOString()),
+          projectHint: String(ws.projectHint || 'mim-llm'),
+          executedChats: Array.isArray(ws.executedChats) ? ws.executedChats.slice(0, 80) : [],
+        }));
+    }
+  } catch {
+    state.workspaces = [];
+  }
+
+  if (!state.workspaces.length) {
+    state.workspaces = defaultWorkspaces();
+    saveWorkspaces();
+  }
+
+  if (!state.activeWorkspaceId || !activeWorkspace()) {
+    state.activeWorkspaceId = state.workspaces[0].id;
+  }
+
+  renderWorkspaceSelect();
+}
+
+function trackWorkspaceExecution(chat) {
+  const ws = activeWorkspace();
+  if (!ws || !chat) return;
+  const now = new Date().toISOString();
+  const user = normalizeUser(state.session?.user || 'guest');
+  const idx = ws.executedChats.findIndex((entry) => entry.chatId === chat.id && entry.user === user);
+  const record = {
+    chatId: chat.id,
+    title: chat.title,
+    user,
+    updatedAt: now,
+  };
+  if (idx >= 0) {
+    ws.executedChats[idx] = record;
+  } else {
+    ws.executedChats.unshift(record);
+  }
+  ws.executedChats = ws.executedChats.slice(0, 120);
+  ws.lastUsedAt = now;
+  saveWorkspaces();
+}
+
+async function browseWorkspaceFromFileSystem() {
+  if (!window.showDirectoryPicker) {
+    const manualPath = window.prompt('Dateipfad fuer Workspace eingeben', '/home/clemi/projekte/LLM');
+    return (manualPath || '').trim();
+  }
+
+  try {
+    const dir = await window.showDirectoryPicker();
+    const pickedName = String(dir?.name || '').trim();
+    const manualPath = window.prompt('Dateipfad fuer den gewaehlten Ordner bestaetigen', pickedName ? `/home/clemi/projekte/${pickedName}` : '/home/clemi/projekte/LLM');
+    return (manualPath || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+function createWorkspace(name, path) {
+  const wsName = String(name || '').trim();
+  const wsPath = String(path || '').trim();
+  if (!wsName || !wsPath) return null;
+
+  const existing = state.workspaces.find((ws) => ws.path.toLowerCase() === wsPath.toLowerCase());
+  if (existing) {
+    existing.name = wsName;
+    existing.lastUsedAt = new Date().toISOString();
+    state.activeWorkspaceId = existing.id;
+    saveWorkspaces();
+    renderWorkspaceSelect();
+    return existing;
+  }
+
+  const created = {
+    id: workspaceId(),
+    name: wsName,
+    path: wsPath,
+    createdAt: new Date().toISOString(),
+    lastUsedAt: new Date().toISOString(),
+    projectHint: el('projectInput')?.value?.trim() || 'mim-llm',
+    executedChats: [],
+  };
+  state.workspaces.unshift(created);
+  state.activeWorkspaceId = created.id;
+  saveWorkspaces();
+  renderWorkspaceSelect();
+  return created;
+}
+
+function updateUserSuggestions() {
+  const list = el('userSuggestions');
+  if (!list) return;
+  list.innerHTML = '';
+  state.users.forEach((u) => {
+    const option = document.createElement('option');
+    option.value = u.user;
+    list.appendChild(option);
+  });
+}
+
+function saveUsers() {
+  try {
+    localStorage.setItem(USERS_KEY, JSON.stringify(state.users));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function loadUsers() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+    if (Array.isArray(parsed) && parsed.length) {
+      state.users = parsed
+        .filter((u) => normalizeUser(u?.user))
+        .map((u) => ({
+          user: normalizeUser(u.user),
+          role: ['admin', 'service', 'reviewer'].includes(String(u.role)) ? String(u.role) : 'reviewer',
+          projects: Array.isArray(u.projects) && u.projects.length ? u.projects.map((p) => String(p).trim()).filter(Boolean) : ['mim-llm'],
+        }));
+    }
+  } catch {
+    state.users = [];
+  }
+
+  if (!state.users.length) {
+    state.users = defaultUsers();
+    saveUsers();
+  }
+  updateUserSuggestions();
+}
+
+function saveSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(state.session || null));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function loadSession() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if (parsed && parsed.user) {
+      state.session = { user: normalizeUser(parsed.user), role: String(parsed.role || 'reviewer') };
+      el('sessionBadge').textContent = `${state.session.user} (${state.session.role})`;
+      el('userInput').value = state.session.user;
+      el('roleInput').value = state.session.role;
+    }
+  } catch {
+    state.session = null;
+  }
 }
 
 function updateModelInfo() {
@@ -200,6 +444,7 @@ function addHistory(query, model, project) {
 function defaultChat(title = null) {
   const id = chatId();
   const now = new Date().toISOString();
+  const ws = activeWorkspace();
   return {
     id,
     title: title || `Chat ${Object.keys(state.chats).length + 1}`,
@@ -209,9 +454,12 @@ function defaultChat(title = null) {
     stash: {
       selectedModel: el('modelInput')?.value || 'gemma2-2b',
       project: el('projectInput')?.value || 'mim-llm',
+      workspaceId: ws?.id || state.activeWorkspaceId || 'ws-default',
+      workspacePath: ws?.path || '/home/clemi/projekte/LLM',
       topK: Number(el('topKInput')?.value || 5),
       agentMode: el('agentModeInput')?.value || 'off',
       selectedFsPath: null,
+      contextFiles: [],
       lastSources: [],
       lastAnswer: '',
     },
@@ -225,10 +473,10 @@ function activeChat() {
 function saveChats() {
   try {
     localStorage.setItem(
-      CHAT_STORE_KEY,
+      sessionChatStoreKey(),
       JSON.stringify({
         activeChatId: state.activeChatId,
-        chats: Object.values(state.chats).slice(0, 20),
+        chats: Object.values(state.chats).slice(0, 40),
       }),
     );
   } catch {
@@ -237,20 +485,24 @@ function saveChats() {
 }
 
 function loadChats() {
+  state.chats = {};
+  state.activeChatId = null;
+
   try {
-    const parsed = JSON.parse(localStorage.getItem(CHAT_STORE_KEY) || '{}');
+    const parsed = JSON.parse(localStorage.getItem(sessionChatStoreKey()) || '{}');
     const list = Array.isArray(parsed.chats) ? parsed.chats : [];
     list.forEach((chat) => {
       if (chat?.id) {
         state.chats[chat.id] = {
           ...chat,
-          messages: Array.isArray(chat.messages) ? chat.messages.slice(-400) : [],
+          messages: Array.isArray(chat.messages) ? chat.messages.slice(-500) : [],
           stash: {
             selectedModel: chat?.stash?.selectedModel || 'gemma2-2b',
             project: chat?.stash?.project || 'mim-llm',
             topK: Number(chat?.stash?.topK || 5),
             agentMode: chat?.stash?.agentMode || 'off',
             selectedFsPath: chat?.stash?.selectedFsPath || null,
+            contextFiles: Array.isArray(chat?.stash?.contextFiles) ? chat.stash.contextFiles.slice(0, 30) : [],
             lastSources: Array.isArray(chat?.stash?.lastSources) ? chat.stash.lastSources.slice(0, 25) : [],
             lastAnswer: chat?.stash?.lastAnswer || '',
           },
@@ -281,8 +533,19 @@ function renderChatSessions() {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `chatSessionBtn${chat.id === state.activeChatId ? ' active' : ''}`;
+      btn.title = 'Klick: oeffnen | Doppelklick: umbenennen';
       btn.textContent = `${chat.title} (${chat.messages.length})`;
       btn.addEventListener('click', () => switchChat(chat.id));
+      btn.addEventListener('dblclick', () => {
+        const next = window.prompt('Neuer Chat-Name', chat.title);
+        if (next && next.trim()) {
+          chat.title = next.trim();
+          chat.updatedAt = new Date().toISOString();
+          renderChatSessions();
+          saveChats();
+          addAudit('chat_rename', `${chat.id} -> ${chat.title}`);
+        }
+      });
       li.appendChild(btn);
       ul.appendChild(li);
     });
@@ -294,6 +557,44 @@ function renderSources(sources) {
   (sources || []).forEach((s) => {
     const li = document.createElement('li');
     li.textContent = `${s.project || '-'} | ${s.title || '-'} | ${s.path || '-'}`;
+    ul.appendChild(li);
+  });
+}
+
+function renderContextFiles() {
+  const ul = el('contextFilesList');
+  if (!ul) return;
+  ul.innerHTML = '';
+  const chat = activeChat();
+  const files = chat?.stash?.contextFiles || [];
+
+  if (!files.length) {
+    const li = document.createElement('li');
+    li.textContent = 'Keine';
+    ul.appendChild(li);
+    return;
+  }
+
+  files.forEach((path) => {
+    const li = document.createElement('li');
+    const txt = document.createElement('span');
+    txt.textContent = path;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'contextRemove';
+    removeBtn.textContent = 'x';
+    removeBtn.title = 'Aus Kontext entfernen';
+    removeBtn.addEventListener('click', () => {
+      const chatCur = activeChat();
+      if (!chatCur) return;
+      chatCur.stash.contextFiles = chatCur.stash.contextFiles.filter((f) => f !== path);
+      renderContextFiles();
+      saveChats();
+    });
+
+    li.appendChild(txt);
+    li.appendChild(removeBtn);
     ul.appendChild(li);
   });
 }
@@ -332,15 +633,19 @@ function renderMessages() {
   box.scrollTop = box.scrollHeight;
 
   renderActiveChatHistory();
+  renderContextFiles();
   renderSources(chat.stash.lastSources || []);
 }
 
 function updateChatStashFromInputs() {
   const chat = activeChat();
+  const ws = activeWorkspace();
   if (!chat) return;
 
   chat.stash.selectedModel = el('modelInput').value;
   chat.stash.project = el('projectInput').value.trim() || 'mim-llm';
+  chat.stash.workspaceId = ws?.id || state.activeWorkspaceId || 'ws-default';
+  chat.stash.workspacePath = ws?.path || '/home/clemi/projekte/LLM';
   chat.stash.topK = Number(el('topKInput').value || 5);
   chat.stash.agentMode = el('agentModeInput').value;
   chat.stash.selectedFsPath = state.selectedFsPath;
@@ -348,15 +653,19 @@ function updateChatStashFromInputs() {
   saveChats();
 }
 
-function switchChat(chatId) {
-  if (!state.chats[chatId]) return;
-  state.activeChatId = chatId;
+function switchChat(nextChatId) {
+  if (!state.chats[nextChatId]) return;
+  state.activeChatId = nextChatId;
 
   const chat = activeChat();
   el('modelInput').value = chat.stash.selectedModel || 'gemma2-2b';
   el('projectInput').value = chat.stash.project || 'mim-llm';
   el('topKInput').value = String(chat.stash.topK || 5);
   el('agentModeInput').value = chat.stash.agentMode || 'off';
+  if (chat?.stash?.workspaceId && chat.stash.workspaceId !== state.activeWorkspaceId) {
+    state.activeWorkspaceId = chat.stash.workspaceId;
+    renderWorkspaceSelect();
+  }
   state.selectedFsPath = chat.stash.selectedFsPath || null;
 
   updateModelInfo();
@@ -364,7 +673,7 @@ function switchChat(chatId) {
   renderProjectStructure();
   renderMessages();
   saveChats();
-  addAudit('chat_switch', chatId);
+  addAudit('chat_switch', nextChatId);
 }
 
 function appendMessage(role, text) {
@@ -372,9 +681,9 @@ function appendMessage(role, text) {
   if (!chat) return;
 
   chat.messages.push({ ts: nowTs(), role, text });
-  chat.messages = chat.messages.slice(-400);
+  chat.messages = chat.messages.slice(-500);
   if (chat.messages.length === 1 && role === 'user') {
-    chat.title = text.slice(0, 28) || chat.title;
+    chat.title = text.slice(0, 36) || chat.title;
   }
   chat.updatedAt = new Date().toISOString();
 
@@ -396,14 +705,11 @@ function clearActiveChat() {
   chat.messages = [];
   chat.stash.lastSources = [];
   chat.stash.lastAnswer = '';
+  chat.stash.contextFiles = [];
   chat.updatedAt = new Date().toISOString();
   renderMessages();
   renderChatSessions();
   saveChats();
-}
-
-function pathForNode(basePath, name) {
-  return `${basePath}${name}`;
 }
 
 function createTreeNode(node, basePath = '') {
@@ -412,7 +718,7 @@ function createTreeNode(node, basePath = '') {
 
   const name = typeof node === 'string' ? node : String(node.name || 'node');
   const isFolder = name.endsWith('/');
-  const fullPath = pathForNode(basePath, name);
+  const fullPath = `${basePath}${name}`;
 
   label.className = `fsNode ${isFolder ? 'folder' : 'file'}`;
   label.textContent = name;
@@ -439,9 +745,6 @@ function createTreeNode(node, basePath = '') {
       li.classList.toggle('collapsed');
     } else {
       addAudit('fs_select', fullPath);
-      if (!el('promptInput').value.trim()) {
-        el('promptInput').value = `Analysiere die Datei ${fullPath} im Projektkontext.`;
-      }
     }
   });
 
@@ -460,21 +763,128 @@ function createTreeNode(node, basePath = '') {
 function renderProjectStructure() {
   const tree = el('fsTree');
   const projectName = (el('projectInput').value || '').trim() || 'projekt';
+  const ws = activeWorkspace();
+  const wsPath = ws?.path || '/home/clemi/projekte/LLM';
   el('fsProjectLabel').textContent = `Kontext: ${projectName}`;
-  el('fsSelectedPath').textContent = `Ausgewaehlt: ${state.selectedFsPath || '-'}`;
+  el('fsSelectedPath').textContent = `Ausgewaehlt: ${state.selectedFsPath || '-'} | Workspace: ${wsPath}`;
 
   tree.innerHTML = '';
   tree.appendChild(createTreeNode(PROJECT_STRUCTURE));
 }
 
-el('loginBtn').addEventListener('click', () => {
-  const user = el('userInput').value.trim() || 'user';
-  const role = el('roleInput').value;
+function addSelectedFileToContext() {
+  const chat = activeChat();
+  const path = state.selectedFsPath;
+  if (!chat || !path || path.endsWith('/')) {
+    setStatus('Bitte zuerst eine Datei im Dateisystem auswaehlen.', true);
+    return;
+  }
+
+  if (!chat.stash.contextFiles.includes(path)) {
+    chat.stash.contextFiles.push(path);
+    chat.stash.contextFiles = chat.stash.contextFiles.slice(-30);
+    chat.updatedAt = new Date().toISOString();
+    saveChats();
+    renderContextFiles();
+    addAudit('context_add', path);
+    setStatus(`Datei zum Kontext hinzugefuegt: ${path}`);
+  }
+}
+
+function clearContextFiles() {
+  const chat = activeChat();
+  if (!chat) return;
+  chat.stash.contextFiles = [];
+  saveChats();
+  renderContextFiles();
+  addAudit('context_clear', chat.id);
+}
+
+function applyUserRoleHint() {
+  const user = normalizeUser(el('userInput').value);
+  const known = findUser(user);
+  if (known) {
+    el('roleInput').value = known.role;
+  }
+}
+
+function loginCurrentUser() {
+  const user = normalizeUser(el('userInput').value) || 'user';
+  const known = findUser(user);
+  const role = known ? known.role : el('roleInput').value;
+
   state.session = { user, role };
+  saveSession();
+
   el('sessionBadge').textContent = `${user} (${role})`;
+  el('roleInput').value = role;
+
+  loadChats();
+  renderChatSessions();
+  switchChat(state.activeChatId);
+
   addAudit('login', `user=${user}, role=${role}`);
-  setStatus('Eingeloggt. Rollensteuerung aktiv.');
+  setStatus(`Eingeloggt als ${user} (${roleLabel(role)}).`);
+}
+
+async function createWorkspaceFromPicker() {
+  const pickedPath = await browseWorkspaceFromFileSystem();
+  if (!pickedPath) {
+    setStatus('Workspace-Auswahl abgebrochen.');
+    return;
+  }
+  const fallbackName = pickedPath.split('/').filter(Boolean).slice(-1)[0] || 'Workspace';
+  const name = window.prompt('Name fuer den Workspace', fallbackName) || fallbackName;
+  const ws = createWorkspace(name, pickedPath);
+  if (!ws) {
+    setStatus('Workspace konnte nicht angelegt werden.', true);
+    return;
+  }
+
+  el('projectInput').value = ws.projectHint || el('projectInput').value || 'mim-llm';
+  loadChats();
+  renderChatSessions();
+  switchChat(state.activeChatId);
+  renderProjectStructure();
+  addAudit('workspace_open', `${ws.name} (${ws.path})`);
+  setStatus(`Workspace aktiv: ${ws.name}`);
+}
+
+function createWorkspaceFromPrompt() {
+  const path = window.prompt('Dateipfad des neuen Workspace', '/home/clemi/projekte/LLM');
+  if (!path || !path.trim()) return;
+  const fallbackName = path.trim().split('/').filter(Boolean).slice(-1)[0] || 'Workspace';
+  const name = window.prompt('Name fuer den Workspace', fallbackName) || fallbackName;
+  const ws = createWorkspace(name, path.trim());
+  if (!ws) return;
+  loadChats();
+  renderChatSessions();
+  switchChat(state.activeChatId);
+  renderProjectStructure();
+  addAudit('workspace_new', `${ws.name} (${ws.path})`);
+  setStatus(`Workspace angelegt: ${ws.name}`);
+}
+
+el('loginBtn').addEventListener('click', loginCurrentUser);
+el('userInput').addEventListener('change', applyUserRoleHint);
+el('workspaceSelect').addEventListener('change', (ev) => {
+  state.activeWorkspaceId = ev.target.value;
+  const ws = activeWorkspace();
+  if (ws) {
+    ws.lastUsedAt = new Date().toISOString();
+    saveWorkspaces();
+    if (ws.projectHint) {
+      el('projectInput').value = ws.projectHint;
+    }
+  }
+  loadChats();
+  renderChatSessions();
+  switchChat(state.activeChatId);
+  renderProjectStructure();
+  addAudit('workspace_switch', state.activeWorkspaceId || '-');
 });
+el('browseWorkspaceBtn').addEventListener('click', createWorkspaceFromPicker);
+el('newWorkspaceBtn').addEventListener('click', createWorkspaceFromPrompt);
 
 el('modelInput').addEventListener('change', () => {
   updateModelInfo();
@@ -482,6 +892,12 @@ el('modelInput').addEventListener('change', () => {
 });
 
 el('projectInput').addEventListener('input', () => {
+  const ws = activeWorkspace();
+  if (ws) {
+    ws.projectHint = el('projectInput').value.trim() || 'mim-llm';
+    ws.lastUsedAt = new Date().toISOString();
+    saveWorkspaces();
+  }
   renderProjectStructure();
   updateChatStashFromInputs();
 });
@@ -518,6 +934,9 @@ el('clearChatHistoryBtn').addEventListener('click', () => {
   addAudit('history', `chatverlauf geloescht (${state.activeChatId || 'none'})`);
 });
 
+el('addSelectedFileBtn').addEventListener('click', addSelectedFileToContext);
+el('clearContextFilesBtn').addEventListener('click', clearContextFiles);
+
 document.querySelectorAll('.promptChip').forEach((btn) => {
   btn.addEventListener('click', () => {
     const prompt = btn.dataset.prompt || '';
@@ -536,8 +955,13 @@ el('sendBtn').addEventListener('click', async () => {
   const top_k = Number(el('topKInput').value || 5);
   const agentMode = el('agentModeInput').value;
 
+  const chat = activeChat();
+  const contextFiles = Array.isArray(chat?.stash?.contextFiles) ? chat.stash.contextFiles : [];
   const modeHint = AGENT_MODES[agentMode] || '';
-  const finalQuery = modeHint ? `${modeHint}\n\nUser Prompt:\n${query}` : query;
+  const contextHint = contextFiles.length
+    ? `Kontextdateien (bitte inhaltlich beruecksichtigen):\n- ${contextFiles.join('\n- ')}\n\n`
+    : '';
+  const finalQuery = `${modeHint}${modeHint ? '\n\n' : ''}${contextHint}${query}`;
 
   appendMessage('user', query);
   addHistory(query, model, project);
@@ -549,18 +973,18 @@ el('sendBtn').addEventListener('click', async () => {
     const data = await requestJson(`${API_BASE}/v1/rag/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ query: finalQuery, model, project, top_k, agent_mode: agentMode }),
+      body: JSON.stringify({ query: finalQuery, model, project, top_k, agent_mode: agentMode, context_files: contextFiles }),
     });
 
     const answer = data.answer || 'Keine Antwort';
     appendMessage('bot', answer);
 
-    const chat = activeChat();
     if (chat) {
       chat.stash.lastSources = Array.isArray(data.sources) ? data.sources.slice(0, 25) : [];
       chat.stash.lastAnswer = answer;
       chat.updatedAt = new Date().toISOString();
       saveChats();
+      trackWorkspaceExecution(chat);
     }
 
     renderSources(data.sources || []);
@@ -617,13 +1041,21 @@ el('reindexBtn').addEventListener('click', async () => {
 });
 
 (async function boot() {
+  loadWorkspaces();
+  loadUsers();
+  loadSession();
   loadHistory();
   loadChats();
+
   renderHistory();
   renderChatSessions();
   switchChat(state.activeChatId);
   renderProjectStructure();
   updateModelInfo();
+
+  if (state.session?.user) {
+    el('sessionBadge').textContent = `${state.session.user} (${state.session.role})`;
+  }
 
   setStatus('Pruefe API...');
   try {

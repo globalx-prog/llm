@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hilfe: GitHub User + Tailscale</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(980px 460px at 0% -10%, #ffe8cf, transparent), var(--paper);
+    }
+    main { max-width: 980px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid #00000020;
+      border-radius: 14px;
+      padding: .9rem;
+      margin-bottom: .85rem;
+      box-shadow: 0 10px 24px #00000011;
+    }
+    h1, h2 { margin-top: 0; }
+    ol, ul { line-height: 1.45; }
+    code {
+      background: #eef6fb;
+      border: 1px solid #0f4e6730;
+      border-radius: 6px;
+      padding: .08rem .28rem;
+      font-family: "IBM Plex Mono", Consolas, monospace;
+    }
+    .note {
+      border: 1px solid #0f4e6730;
+      border-left: 5px solid var(--accent);
+      border-radius: 10px;
+      background: #f4fbff;
+      padding: .6rem .7rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Wie fuege ich User aus GitHub hinzu?</h1>
+      <p>In diesem Stack werden Berechtigungen lokal in der User-Verwaltung gepflegt. Ein GitHub-Username kann direkt als User-ID uebernommen werden, die Authentisierung bleibt aber weiterhin lokal/VPN-basiert.</p>
+
+      <h2>Schritte</h2>
+      <ol>
+        <li>GitHub-Handle ermitteln, z. B. <code>octocat</code>.</li>
+        <li>In der Seite <code>Rechte / User</code> neuen User anlegen.</li>
+        <li>Als Username den GitHub-Handle eintragen, Rolle waehlen, erlaubte Projekte setzen.</li>
+        <li>Speichern. Der User kann sich danach mit genau diesem Namen einloggen.</li>
+      </ol>
+
+      <div class="note">
+        <strong>Wichtig:</strong> Das ist eine Namenszuordnung (Identity Mapping), kein OAuth-Login gegen GitHub.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Warum Tailscale?</h2>
+      <ul>
+        <li>Tailscale baut ein privates, verschluesseltes Overlay-Netz fuer Admin/API/UI-Zugriffe.</li>
+        <li>Nur Geraete im Tailnet koennen interne Dienste (z. B. Port 4100/4173) erreichen.</li>
+        <li>ACLs in Tailscale steuern, welche Nutzergruppen welche Serverports erreichen duerfen.</li>
+      </ul>
+
+      <h2>Typischer Ablauf mit Tailscale</h2>
+      <ol>
+        <li>User in Tailscale-Admin aufnehmen oder per Invite einladen.</li>
+        <li>Client anmelden, Erreichbarkeit pruefen (Tailnet-IP / MagicDNS).</li>
+        <li>Optional ACL-Regeln fuer API/UI auf Projektservern setzen.</li>
+        <li>Danach User im LLM-Deck mit Rolle und Projekten anlegen.</li>
+      </ol>
+
+      <div class="note">
+        Best Practice: Zugang auf zwei Ebenen steuern.
+        1) Netzwerkzugang via Tailscale.
+        2) Anwendungsrechte via Rollen in der Rechteverwaltung.
+      </div>
+    </section>
+  </main>
+</body>
+</html>

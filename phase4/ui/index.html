@@ -14,14 +14,29 @@
       <p class="subtitle">VPN-ready Projektarbeit mit RAG, Rollensteuerung und Audit</p>
     </div>
     <div class="topbarActions">
+      <a class="topLink" href="workspaces.html" target="_blank" rel="noopener noreferrer">Workspaces</a>
       <a class="topLink" href="beispielprompts.html" target="_blank" rel="noopener noreferrer">Beispielprompts</a>
       <a class="topLink" href="hw-monitor.html" target="_blank" rel="noopener noreferrer">HW Ueberwachung</a>
+      <a class="topLink" href="rechte-und-user.html" target="_blank" rel="noopener noreferrer">Rechte / User</a>
+      <a class="topLink" href="hilfe-github-tailscale.html" target="_blank" rel="noopener noreferrer">GitHub + Tailscale Hilfe</a>
+      <a class="topLink" href="login-prozess.html" target="_blank" rel="noopener noreferrer">Login Prozess</a>
       <div id="sessionBadge" class="badge">Nicht eingeloggt</div>
     </div>
   </header>
 
   <main class="layout">
     <aside class="panel nav">
+      <h2>Workspace</h2>
+      <label>Aktiver Workspace
+        <select id="workspaceSelect"></select>
+        <p class="fieldHelp">Workspace bestimmt den Dateisystem-Kontext und gruppiert zugehoerige Chats.</p>
+      </label>
+      <div class="workspaceTools">
+        <button id="browseWorkspaceBtn" class="ghostBtn" type="button">Dateisystem durchsuchen</button>
+        <button id="newWorkspaceBtn" class="ghostBtn" type="button">Neuen Workspace anlegen</button>
+      </div>
+      <a class="topLink inline" href="workspaces.html" target="_blank" rel="noopener noreferrer">Workspace Uebersicht oeffnen</a>
+
       <h2>Projektkontext</h2>
       <label>Projekt
         <input id="projectInput" value="mim-llm" />
@@ -34,8 +49,9 @@
 
       <h2>Login / Rolle</h2>
       <label>User
-        <input id="userInput" placeholder="z. B. clemi" value="clemi" />
-        <p class="fieldHelp">Logischer Nutzername fuer Header, Audit und Nachvollziehbarkeit von Aktionen.</p>
+        <input id="userInput" list="userSuggestions" placeholder="z. B. clemi" value="clemi" />
+        <datalist id="userSuggestions"></datalist>
+        <p class="fieldHelp">User aus der Rechteverwaltung waehlen oder neu eingeben. Angemeldete User sehen ihre eigenen Chats und koennen daran weiterarbeiten.</p>
       </label>
       <label>Rolle
         <select id="roleInput">
@@ -94,7 +110,7 @@
 
       <section class="chatSessionsPanel" aria-label="Chats">
         <div class="historyHead">
-          <h3>Chats</h3>
+          <h3>Meine Chats</h3>
         </div>
         <ul id="chatSessionsList" class="chatSessions"></ul>
       </section>
@@ -139,6 +155,14 @@
       <div class="composer">
         <textarea id="promptInput" rows="4" placeholder="Frage mit Projektkontext stellen..."></textarea>
         <p class="fieldHelp">Dein Arbeitsauftrag an das Modell. Konkrete Ziele, Randbedingungen und Ausgabeformat verbessern die Antwortqualitaet.</p>
+        <div class="contextTools">
+          <button id="addSelectedFileBtn" class="ghostBtn" type="button">Ausgewaehlte Datei zum Kontext</button>
+          <button id="clearContextFilesBtn" class="ghostBtn" type="button">Kontextdateien leeren</button>
+        </div>
+        <div class="contextFilesWrap">
+          <h3>Kontextdateien</h3>
+          <ul id="contextFilesList" class="contextFiles"></ul>
+        </div>
         <button id="sendBtn">Senden</button>
       </div>
     </section>

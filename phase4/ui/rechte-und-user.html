@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rechte und User - LLM Control Deck</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+      --warn: #8b1e3f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(900px 420px at 100% -10%, #dff0ff, transparent), var(--paper);
+    }
+    main { max-width: 980px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid #00000020;
+      border-radius: 14px;
+      padding: .9rem;
+      margin-bottom: .85rem;
+      box-shadow: 0 10px 24px #00000011;
+    }
+    h1 { margin: 0 0 .35rem; }
+    .sub { margin: 0; opacity: .8; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .45rem .5rem; border-bottom: 1px solid #0000001f; text-align: left; font-size: .88rem; }
+    th { font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .55rem; }
+    label { display: block; font-size: .82rem; }
+    input, select, button {
+      width: 100%;
+      padding: .55rem .62rem;
+      border: 1px solid #00000033;
+      border-radius: 9px;
+      font: inherit;
+    }
+    button {
+      border: 0;
+      color: white;
+      background: var(--accent);
+      cursor: pointer;
+      margin-top: .35rem;
+    }
+    .status { margin-top: .55rem; font-size: .82rem; color: #264f64; }
+    .warn { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Rechtesystem und Userverwaltung</h1>
+      <p class="sub">Admin kann User hinzufuegen. User arbeiten mit ihren eigenen Chat-Workspaces weiter.</p>
+      <p id="sessionInfo" class="status">Session: nicht erkannt</p>
+    </section>
+
+    <section class="card">
+      <h2>Rollen und Funktionen</h2>
+      <table>
+        <thead><tr><th>Rolle</th><th>Darf lesen</th><th>Darf schreiben (Re-Index)</th><th>Darf User anlegen</th></tr></thead>
+        <tbody>
+          <tr><td>admin</td><td>ja</td><td>ja</td><td>ja</td></tr>
+          <tr><td>service</td><td>ja</td><td>ja</td><td>nein</td></tr>
+          <tr><td>reviewer</td><td>ja</td><td>nein</td><td>nein</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>User hinzufuegen (Admin)</h2>
+      <div class="grid">
+        <label>User
+          <input id="newUser" placeholder="z. B. alex" />
+        </label>
+        <label>Rolle
+          <select id="newRole">
+            <option value="reviewer">reviewer</option>
+            <option value="service">service</option>
+            <option value="admin">admin</option>
+          </select>
+        </label>
+        <label>Projekte (Komma-getrennt)
+          <input id="newProjects" value="mim-llm" />
+        </label>
+      </div>
+      <button id="addUserBtn" type="button">User speichern</button>
+      <p id="addStatus" class="status"></p>
+    </section>
+
+    <section class="card">
+      <h2>Aktuelle User</h2>
+      <table>
+        <thead><tr><th>User</th><th>Rolle</th><th>Projekte</th></tr></thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = window.LLM_API_BASE || `${window.location.protocol}//${window.location.hostname}:4100`;
+    const USERS_KEY = 'llm-users-v1';
+    const SESSION_KEY = 'llm-active-session-v1';
+
+    function loadUsers() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
+        if (Array.isArray(parsed) && parsed.length) {
+          return parsed;
+        }
+      } catch {}
+      return [
+        { user: 'clemi', role: 'admin', projects: ['mim-llm'] },
+        { user: 'service-bot', role: 'service', projects: ['mim-llm'] },
+      ];
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+
+    function loadSession() {
+      try {
+        return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      } catch {
+        return null;
+      }
+    }
+
+    function renderUsers(users) {
+      const tbody = document.getElementById('usersTable');
+      tbody.innerHTML = '';
+      users.forEach((u) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${u.user}</td><td>${u.role}</td><td>${(u.projects || []).join(', ')}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function requestJson(url, options = {}) {
+      const res = await fetch(url, options);
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (!res.ok) {
+        throw new Error(data?.detail || data?.error?.message || `HTTP ${res.status}`);
+      }
+      return data || {};
+    }
+
+    function authHeaders(session) {
+      if (!session?.user) return {};
+      return { 'X-User': session.user, 'X-Role': session.role || 'reviewer' };
+    }
+
+    const session = loadSession();
+    const info = document.getElementById('sessionInfo');
+    const addStatus = document.getElementById('addStatus');
+    let users = loadUsers();
+
+    if (session?.user) {
+      info.textContent = `Session: ${session.user} (${session.role})`;
+    }
+
+    renderUsers(users);
+
+    (async function syncFromApi() {
+      if (!session?.user) return;
+      try {
+        const data = await requestJson(`${API_BASE}/v1/rag/users`, {
+          headers: { ...authHeaders(session) },
+        });
+        if (Array.isArray(data.users) && data.users.length) {
+          users = data.users.map((u) => ({
+            user: u.user,
+            role: u.role || 'reviewer',
+            projects: Array.isArray(u.projects) ? u.projects : ['mim-llm'],
+          }));
+          saveUsers(users);
+          renderUsers(users);
+        }
+      } catch {
+        // local fallback remains visible
+      }
+    })();
+
+    document.getElementById('addUserBtn').addEventListener('click', () => {
+      if (!session || session.role !== 'admin') {
+        addStatus.textContent = 'Nur Admin darf User anlegen.';
+        addStatus.className = 'status warn';
+        return;
+      }
+
+      const user = String(document.getElementById('newUser').value || '').trim();
+      const role = String(document.getElementById('newRole').value || 'reviewer');
+      const projects = String(document.getElementById('newProjects').value || 'mim-llm')
+        .split(',')
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      if (!user) {
+        addStatus.textContent = 'Bitte Usernamen eingeben.';
+        addStatus.className = 'status warn';
+        return;
+      }
+
+      const existing = users.find((u) => u.user === user);
+      if (existing) {
+        existing.role = role;
+        existing.projects = projects.length ? projects : ['mim-llm'];
+      } else {
+        users.push({ user, role, projects: projects.length ? projects : ['mim-llm'] });
+      }
+
+      (async () => {
+        try {
+          await requestJson(`${API_BASE}/v1/rag/users`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders(session),
+            },
+            body: JSON.stringify({ user, role, projects: projects.length ? projects : ['mim-llm'] }),
+          });
+        } catch {
+          // fallback to local only
+        }
+
+        saveUsers(users);
+        renderUsers(users);
+        addStatus.textContent = `User ${user} gespeichert.`;
+        addStatus.className = 'status';
+      })();
+    });
+  </script>
+</body>
+</html>

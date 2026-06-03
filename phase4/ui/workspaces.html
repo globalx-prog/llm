@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workspaces - LLM Control Deck</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(920px 420px at 100% -20%, #dff1ff, transparent), var(--paper);
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid #00000020;
+      border-radius: 14px;
+      padding: .95rem;
+      margin-bottom: .9rem;
+      box-shadow: 0 10px 24px #00000010;
+    }
+    .meta { opacity: .78; font-size: .9rem; }
+    .toolbar {
+      display: flex;
+      gap: .55rem;
+      flex-wrap: wrap;
+      margin-top: .7rem;
+    }
+    input, button {
+      border-radius: 9px;
+      padding: .5rem .62rem;
+      font: inherit;
+      border: 1px solid #00000030;
+    }
+    button {
+      border: 0;
+      color: white;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid #0000001d;
+      padding: .45rem .38rem;
+      vertical-align: top;
+    }
+    .mono {
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: .8rem;
+      word-break: break-all;
+    }
+    .sublist {
+      margin: .15rem 0;
+      padding-left: 1rem;
+    }
+    .sublist li { margin-bottom: .2rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Workspace Uebersicht</h1>
+      <p class="meta">Listet angelegte Workspaces und die zuletzt ausgefuehrten Chats pro Workspace. Datenquelle: browserseitiger Speicher.</p>
+      <div class="toolbar">
+        <input id="newWsName" placeholder="Workspace-Name" />
+        <input id="newWsPath" placeholder="/pfad/zum/workspace" />
+        <button id="addBtn" type="button">Workspace anlegen</button>
+        <button id="reloadBtn" type="button">Neu laden</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Workspaces</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Pfad</th>
+            <th>Letzte Nutzung</th>
+            <th>Ausgefuehrte Chats</th>
+          </tr>
+        </thead>
+        <tbody id="workspaceRows"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    const WORKSPACES_KEY = 'llm-workspaces-v1';
+
+    function loadWorkspaces() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(WORKSPACES_KEY) || '[]');
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+      return [];
+    }
+
+    function saveWorkspaces(items) {
+      localStorage.setItem(WORKSPACES_KEY, JSON.stringify(items));
+    }
+
+    function fmtTs(ts) {
+      if (!ts) return '-';
+      const d = new Date(ts);
+      return Number.isNaN(d.getTime()) ? ts : d.toLocaleString('de-DE');
+    }
+
+    function render() {
+      const rows = document.getElementById('workspaceRows');
+      rows.innerHTML = '';
+      const workspaces = loadWorkspaces().sort((a, b) => String(b.lastUsedAt || '').localeCompare(String(a.lastUsedAt || '')));
+
+      if (!workspaces.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="4">Noch keine Workspaces angelegt.</td>';
+        rows.appendChild(tr);
+        return;
+      }
+
+      workspaces.forEach((ws) => {
+        const chats = Array.isArray(ws.executedChats) ? ws.executedChats : [];
+        const chatLines = chats.slice(0, 12).map((item) => `<li>${item.user || 'user'} | ${item.title || item.chatId || '-'} | ${fmtTs(item.updatedAt)}</li>`).join('');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${ws.name || '-'}</td>
+          <td class="mono">${ws.path || '-'}</td>
+          <td>${fmtTs(ws.lastUsedAt)}</td>
+          <td>${chats.length ? `<ul class="sublist">${chatLines}</ul>` : '-'}</td>
+        `;
+        rows.appendChild(tr);
+      });
+    }
+
+    function addWorkspace() {
+      const name = (document.getElementById('newWsName').value || '').trim();
+      const path = (document.getElementById('newWsPath').value || '').trim();
+      if (!name || !path) return;
+
+      const workspaces = loadWorkspaces();
+      const existing = workspaces.find((ws) => String(ws.path || '').toLowerCase() === path.toLowerCase());
+      if (existing) {
+        existing.name = name;
+        existing.lastUsedAt = new Date().toISOString();
+      } else {
+        workspaces.unshift({
+          id: `ws-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          name,
+          path,
+          createdAt: new Date().toISOString(),
+          lastUsedAt: new Date().toISOString(),
+          projectHint: 'mim-llm',
+          executedChats: [],
+        });
+      }
+      saveWorkspaces(workspaces);
+      document.getElementById('newWsName').value = '';
+      document.getElementById('newWsPath').value = '';
+      render();
+    }
+
+    document.getElementById('addBtn').addEventListener('click', addWorkspace);
+    document.getElementById('reloadBtn').addEventListener('click', render);
+    render();
+  </script>
+</body>
+</html>

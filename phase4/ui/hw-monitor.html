@@ -19,11 +19,7 @@
       color: var(--ink);
       background: radial-gradient(920px 420px at 100% -20%, #dff1ff, transparent), var(--paper);
     }
-    main {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 1rem;
-    }
+    main { max-width: 1100px; margin: 0 auto; padding: 1rem; }
     .card {
       background: var(--panel);
       border: 1px solid #00000020;
@@ -32,10 +28,19 @@
       margin-bottom: .9rem;
       box-shadow: 0 10px 24px #00000010;
     }
-    h1 { margin: 0 0 .35rem; }
+    .toolbar { display: flex; gap: .6rem; align-items: center; }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: .5rem .68rem;
+      color: white;
+      background: #0f4e67;
+      cursor: pointer;
+      font: inherit;
+    }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: .6rem;
     }
     .metric {
@@ -48,35 +53,61 @@
     .v { font-size: 1.05rem; font-weight: 700; margin-top: .25rem; }
     .status.ok { color: var(--ok); }
     .status.warn { color: var(--warn); }
-    button {
-      border: 0;
-      border-radius: 8px;
-      padding: .5rem .68rem;
-      color: white;
-      background: #0f4e67;
-      cursor: pointer;
-      font: inherit;
+    .small { font-size: .8rem; opacity: .8; }
+    .hint {
+      margin-top: .55rem;
+      padding: .55rem .65rem;
+      border: 1px solid #0f4e672e;
+      border-left: 5px solid #0f4e67;
+      border-radius: 10px;
+      background: #f2f9fd;
+      font-size: .82rem;
+      line-height: 1.35;
     }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th, td { padding: .38rem .46rem; border-bottom: 1px solid #0000001f; text-align: left; }
+    th { font-weight: 700; }
   </style>
 </head>
 <body>
   <main>
     <section class="card">
       <h1>Hardware / Runtime Ueberwachung</h1>
-      <p>Client-Metriken (Browser) + API-Liveness des RAG-Backends.</p>
-      <button id="refreshBtn" type="button">Aktualisieren</button>
+      <p>Server-Metriken fuer CPU, RAM, GPU und Temperaturen (aus dem API-Endpunkt /v1/system/metrics).</p>
+      <div class="toolbar">
+        <button id="refreshBtn" type="button">Aktualisieren</button>
+        <span id="lastUpdate" class="small">-</span>
+      </div>
     </section>
 
     <section class="card">
       <h2>Uebersicht</h2>
       <div class="grid">
         <div class="metric"><div class="k">API-Status</div><div id="apiStatus" class="v status">-</div></div>
-        <div class="metric"><div class="k">API-Name</div><div id="apiService" class="v">-</div></div>
-        <div class="metric"><div class="k">CPU-Kerne (Client)</div><div id="cpuCores" class="v">-</div></div>
-        <div class="metric"><div class="k">RAM (Client, falls verfuegbar)</div><div id="clientRam" class="v">-</div></div>
-        <div class="metric"><div class="k">Device Memory</div><div id="deviceMemory" class="v">-</div></div>
-        <div class="metric"><div class="k">Netzwerktyp</div><div id="networkType" class="v">-</div></div>
+        <div class="metric"><div class="k">CPU-Auslastung gesamt</div><div id="cpuUtil" class="v">-</div></div>
+        <div class="metric"><div class="k">CPU/Processor Temperatur</div><div id="cpuTemp" class="v">-</div></div>
+        <div class="metric"><div class="k">RAM-Auslastung</div><div id="ramUtil" class="v">-</div></div>
+        <div class="metric"><div class="k">RAM-Temperatur</div><div id="ramTemp" class="v">-</div></div>
+        <div class="metric"><div class="k">GPU-Auslastung</div><div id="gpuUtil" class="v">-</div></div>
+        <div class="metric"><div class="k">GPU-Temperatur</div><div id="gpuTemp" class="v">-</div></div>
       </div>
+    </section>
+
+    <section class="card">
+      <h2>CPU Kerne</h2>
+      <table>
+        <thead><tr><th>Kern</th><th>Auslastung</th><th>Temperatur</th></tr></thead>
+        <tbody id="cpuCoreTable"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>GPU Devices</h2>
+      <p id="gpuHint" class="hint">GPU Diagnose laedt...</p>
+      <table>
+        <thead><tr><th>Name</th><th>Auslastung</th><th>Temperatur</th><th>VRAM</th></tr></thead>
+        <tbody id="gpuTable"></tbody>
+      </table>
     </section>
   </main>
 
@@ -88,18 +119,65 @@
       if (node) node.textContent = value;
     }
 
-    async function refresh() {
-      setText('cpuCores', String(navigator.hardwareConcurrency || 'n/a'));
-      setText('clientRam', performance && performance.memory ? `${Math.round(performance.memory.usedJSHeapSize / (1024 * 1024))} MB Heap` : 'n/a');
-      setText('deviceMemory', navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'n/a');
+    function fmtPct(value) {
+      return Number.isFinite(value) ? `${value.toFixed(1)} %` : 'n/a';
+    }
 
-      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      setText('networkType', conn?.effectiveType || 'n/a');
+    function fmtTemp(value) {
+      return Number.isFinite(value) ? `${value.toFixed(1)} °C` : 'n/a';
+    }
+
+    function renderCpuCores(items) {
+      const tbody = document.getElementById('cpuCoreTable');
+      tbody.innerHTML = '';
+      (items || []).forEach((core) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${core.id}</td><td>${fmtPct(core.utilization_percent)}</td><td>${fmtTemp(core.temperature_c)}</td>`;
+        tbody.appendChild(tr);
+      });
+      if (!items || !items.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="3">Keine Kerndaten verfuegbar</td>';
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderGpus(items) {
+      const tbody = document.getElementById('gpuTable');
+      tbody.innerHTML = '';
+      (items || []).forEach((gpu) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${gpu.name || '-'}</td><td>${fmtPct(gpu.utilization_percent)}</td><td>${fmtTemp(gpu.temperature_c)}</td><td>${gpu.memory_used_mb ?? '-'} / ${gpu.memory_total_mb ?? '-'} MB</td>`;
+        tbody.appendChild(tr);
+      });
+      if (!items || !items.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td colspan="4">Keine GPU-Daten verfuegbar</td>';
+        tbody.appendChild(tr);
+      }
+    }
+
+    function updateGpuHint(gpus, probe) {
+      const node = document.getElementById('gpuHint');
+      if (!node) return;
+
+      if (gpus && gpus.length) {
+        const first = gpus[0] || {};
+        node.textContent = `GPU erkannt: ${first.name || '-'} | Vendor: ${first.vendor || '-'} | Backend: ${first.backend || '-'} | amdgpu Modul geladen: ${probe?.amdgpu_module_loaded ? 'ja' : 'nein'}`;
+        return;
+      }
+
+      node.textContent = `Keine GPU-Metriken. Radeon-Check: amdgpu Modul geladen=${probe?.amdgpu_module_loaded ? 'ja' : 'nein'}, /sys/class/drm cards=${probe?.drm_cards_detected ?? 0}, rocm-smi=${probe?.rocm_smi ? 'verfuegbar' : 'nicht gefunden'}. Wenn du Radeon nutzt und weiterhin n/a siehst, pruefe Kernel-Treiber amdgpu und Sensorrechte.`;
+    }
+
+    async function refresh() {
+      setText('lastUpdate', `Update: ${new Date().toLocaleTimeString('de-DE')}`);
+      const status = document.getElementById('apiStatus');
 
       try {
-        const res = await fetch(`${API_BASE}/healthz`);
+        const res = await fetch(`${API_BASE}/v1/system/metrics`);
         const data = await res.json();
-        const status = document.getElementById('apiStatus');
+
         if (res.ok && data?.ok) {
           status.textContent = 'OK';
           status.className = 'v status ok';
@@ -107,12 +185,36 @@
           status.textContent = 'WARN';
           status.className = 'v status warn';
         }
-        setText('apiService', data?.service || '-');
+
+        const cpu = data?.cpu || {};
+        const ram = data?.ram || {};
+        const gpus = Array.isArray(data?.gpus) ? data.gpus : [];
+        const probe = data?.gpu_probe || {};
+
+        setText('cpuUtil', fmtPct(cpu.utilization_percent));
+        setText('cpuTemp', fmtTemp(cpu.processor_temperature_c));
+        setText('ramUtil', fmtPct(ram.utilization_percent));
+        setText('ramTemp', fmtTemp(ram.temperature_c));
+
+        const firstGpu = gpus[0] || {};
+        setText('gpuUtil', fmtPct(firstGpu.utilization_percent));
+        setText('gpuTemp', fmtTemp(firstGpu.temperature_c));
+
+        renderCpuCores(cpu.cores || []);
+        renderGpus(gpus);
+        updateGpuHint(gpus, probe);
       } catch {
-        const status = document.getElementById('apiStatus');
         status.textContent = 'OFFLINE';
         status.className = 'v status warn';
-        setText('apiService', '-');
+        setText('cpuUtil', 'n/a');
+        setText('cpuTemp', 'n/a');
+        setText('ramUtil', 'n/a');
+        setText('ramTemp', 'n/a');
+        setText('gpuUtil', 'n/a');
+        setText('gpuTemp', 'n/a');
+        renderCpuCores([]);
+        renderGpus([]);
+        updateGpuHint([], {});
       }
     }
 

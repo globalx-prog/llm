@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hilfe: Login Prozess</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(900px 420px at 90% -10%, #e7f6ff, transparent), var(--paper);
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid #00000020;
+      border-radius: 14px;
+      padding: .9rem;
+      margin-bottom: .85rem;
+      box-shadow: 0 10px 24px #00000011;
+    }
+    ol { line-height: 1.5; }
+    .flow {
+      margin-top: .55rem;
+      border: 1px solid #0f4e6730;
+      border-left: 5px solid var(--accent);
+      border-radius: 10px;
+      background: #f4fbff;
+      padding: .65rem .75rem;
+      line-height: 1.45;
+    }
+    code {
+      background: #eef6fb;
+      border: 1px solid #0f4e6730;
+      border-radius: 6px;
+      padding: .08rem .28rem;
+      font-family: "IBM Plex Mono", Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Wie funktioniert der Login-Prozess?</h1>
+      <ol>
+        <li>Du gibst im Feld <code>User</code> einen bekannten Benutzernamen ein.</li>
+        <li>Wenn der User in der User-Liste existiert, wird die Rolle automatisch vorbelegt.</li>
+        <li>Mit <code>Login</code> wird die Session lokal gespeichert (Browser storage).</li>
+        <li>Bei API-Aufrufen sendet die UI die Header <code>X-User</code> und <code>X-Role</code>.</li>
+        <li>Das Backend prueft die Identitaet gegen die Access-Policy / User-Registry.</li>
+        <li>Nur erlaubte Projekte und Rollen duerfen Such- oder Schreibaktionen ausfuehren.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Was wird pro User gespeichert?</h2>
+      <ul>
+        <li>Eigene Chat-Sessions (inkl. Chat-Namen, Verlauf, Kontextdateien).</li>
+        <li>Aktiver Workspace und projektspezifische Voreinstellungen.</li>
+        <li>Die letzte Session, damit ein Reload direkt dort weitermacht.</li>
+      </ul>
+      <div class="flow">
+        Rollenwirkung:
+        <br />
+        <strong>admin/service</strong>: duerfen Write Actions wie Re-Index ausfuehren.
+        <br />
+        <strong>reviewer</strong>: read-only, keine schreibenden Aktionen.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Fehlerbilder schnell verstehen</h2>
+      <ul>
+        <li><code>401 missing user identity</code>: Kein Login oder leerer Username.</li>
+        <li><code>403 user not allowed</code>: User nicht in Policy/Registry.</li>
+        <li><code>403 role mismatch</code>: Rolle in UI passt nicht zur hinterlegten Rolle.</li>
+        <li><code>403 project access denied</code>: User darf das gewaehlte Projekt nicht sehen.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
