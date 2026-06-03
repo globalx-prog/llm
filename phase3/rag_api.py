@@ -19,6 +19,11 @@ ROUTER_BASE = os.getenv("ROUTER_BASE", "http://127.0.0.1:4000")
 ROUTER_KEY = os.getenv("ROUTER_KEY", "change_me_phase2")
 RAG_ROUTER_TIMEOUT_S = float(os.getenv("RAG_ROUTER_TIMEOUT_S", "130"))
 USER_REGISTRY_PATH = os.getenv("USER_REGISTRY_PATH", "/data/rag/user_registry.json")
+FS_WRITE_ROOTS = [
+    p.strip()
+    for p in os.getenv("RAG_FS_WRITE_ROOTS", "/mnt/nas/knowledge:/home/clemi/projekte").split(":")
+    if p.strip()
+]
 
 try:
     import psutil
@@ -50,6 +55,20 @@ class AnswerRequest(BaseModel):
     model: str = "gemma2-2b"
     top_k: int = 5
     project: str | None = None
+    use_web: bool = False
+    web_top_k: int = 3
+
+
+class FileWriteRequest(BaseModel):
+    path: str
+    content: str
+    project: str | None = None
+    append: bool = False
+    ensure_parent: bool = True
+
+
+class ModelProbeRequest(BaseModel):
+    model: str = "gemma2-2b"
 
 
 class UserUpsertRequest(BaseModel):
@@ -119,6 +138,111 @@ def _enforce_project(user: str, project: str | None) -> str:
     if len(allowed) == 1:
         return allowed[0]
     raise HTTPException(status_code=400, detail="project required for multi-project users")
+
+
+def _path_is_under(candidate: Path, root: Path) -> bool:
+    try:
+        candidate.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def _resolve_write_path(path_value: str, project: str) -> Path:
+    raw = str(path_value or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="path required")
+
+    if os.path.isabs(raw):
+        target = Path(raw).expanduser().resolve(strict=False)
+    else:
+        target = Path(f"/mnt/nas/knowledge/{project}", raw).expanduser().resolve(strict=False)
+
+    allowed_roots = [Path(root).expanduser().resolve(strict=False) for root in FS_WRITE_ROOTS]
+    if not any(_path_is_under(target, root) for root in allowed_roots):
+        raise HTTPException(status_code=403, detail="path outside allowed write roots")
+
+    return target
+
+
+def _dedupe_local_hits(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    deduped: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for hit in hits:
+        src = hit.get("source", {}) if isinstance(hit, dict) else {}
+        project = str(src.get("project", "") or "")
+        path = str(src.get("path", "") or "")
+        title = str(src.get("title", "") or "")
+        key = f"{project}|{path}|{title}"
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(hit)
+    return deduped
+
+
+async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
+    q = str(query or "").strip()
+    if not q:
+        return []
+
+    limit = max(1, min(int(top_k or 3), 10))
+    timeout = httpx.Timeout(timeout=10.0, connect=5.0, read=10.0, write=10.0, pool=10.0)
+    url = "https://api.duckduckgo.com/"
+    params = {
+        "q": q,
+        "format": "json",
+        "no_html": "1",
+        "no_redirect": "1",
+        "skip_disambig": "1",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.get(url, params=params)
+            if r.status_code != 200:
+                return []
+            data = r.json() if r.text else {}
+    except Exception:
+        return []
+
+    results: list[dict[str, str]] = []
+
+    abstract_text = str(data.get("AbstractText") or "").strip()
+    abstract_url = str(data.get("AbstractURL") or "").strip()
+    heading = str(data.get("Heading") or "").strip() or "DuckDuckGo"
+    if abstract_text:
+        results.append(
+            {
+                "title": heading,
+                "url": abstract_url,
+                "snippet": abstract_text,
+            }
+        )
+
+    def add_related(items: list[Any]) -> None:
+        for item in items:
+            if len(results) >= limit:
+                return
+            if isinstance(item, dict) and isinstance(item.get("Topics"), list):
+                add_related(item.get("Topics") or [])
+                continue
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("Text") or "").strip()
+            first_url = str(item.get("FirstURL") or "").strip()
+            if text:
+                title = text.split(" - ", 1)[0].strip() or "Web"
+                results.append(
+                    {
+                        "title": title,
+                        "url": first_url,
+                        "snippet": text,
+                    }
+                )
+
+    add_related(data.get("RelatedTopics") or [])
+    return results[:limit]
 
 
 def _read_float(path: str) -> float | None:
@@ -441,6 +565,43 @@ def search(
     return result
 
 
+@app.post("/v1/rag/fs/write")
+def fs_write(
+    req: FileWriteRequest,
+    x_reason: str = Header(default="agent-write"),
+    x_task_id: str = Header(default="none"),
+    x_user: str | None = Header(default=None),
+    x_role: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user, role = _identity(x_user, x_role)
+    if role not in {"admin", "service"}:
+        raise HTTPException(status_code=403, detail="write action not allowed for role")
+    if not x_reason.strip() or not x_task_id.strip():
+        raise HTTPException(status_code=400, detail="reason and task-id are required")
+
+    project = _enforce_project(user, req.project)
+    target = _resolve_write_path(req.path, project)
+
+    if req.ensure_parent:
+        target.parent.mkdir(parents=True, exist_ok=True)
+
+    mode = "a" if req.append else "w"
+    with open(target, mode, encoding="utf-8") as f:
+        f.write(req.content)
+
+    result = {
+        "ok": True,
+        "path": str(target),
+        "project": project,
+        "append": bool(req.append),
+        "bytes_written": len(req.content.encode("utf-8")),
+        "reason": x_reason,
+        "task_id": x_task_id,
+    }
+    _audit_event("fs_write", {"user": user, "role": role, **result})
+    return result
+
+
 @app.post("/v1/rag/answer")
 async def answer(
     req: AnswerRequest,
@@ -450,7 +611,8 @@ async def answer(
     user, role = _identity(x_user, x_role)
     project = _enforce_project(user, req.project)
     retrieval = pipeline.search(req.query, req.top_k, project)
-    hits = retrieval.get("hits", [])
+    hits = _dedupe_local_hits(retrieval.get("hits", []))
+    web_hits = await _web_search_snippets(req.query, req.web_top_k) if req.use_web else []
 
     context_blocks = []
     for i, hit in enumerate(hits, start=1):
@@ -458,6 +620,14 @@ async def answer(
         context_blocks.append(
             f"[{i}] ({src.get('project','')}) {src.get('path','')}\n{hit.get('text','')}"
         )
+
+    offset = len(context_blocks)
+    for j, item in enumerate(web_hits, start=1):
+        label_idx = offset + j
+        title = item.get("title", "Web")
+        url = item.get("url", "")
+        snippet = item.get("snippet", "")
+        context_blocks.append(f"[{label_idx}] (web) {title} | {url}\n{snippet}")
 
     if not context_blocks:
         return {
@@ -534,11 +704,22 @@ async def answer(
 
     response = {
         "answer": answer_text,
-        "sources": [h.get("source", {}) for h in hits],
+        "sources": [h.get("source", {}) for h in hits]
+        + [
+            {
+                "project": "web",
+                "title": item.get("title", "Web"),
+                "path": item.get("url", ""),
+                "snippet": item.get("snippet", ""),
+            }
+            for item in web_hits
+        ],
         "retrieval": retrieval,
         "model": data.get("model", req.model),
         "router_meta": data.get("router_meta", {}),
         "project": project,
+        "web_used": bool(req.use_web),
+        "web_hits": len(web_hits),
         "low_confidence": False,
     }
     _audit_event(
@@ -546,3 +727,65 @@ async def answer(
         {"user": user, "role": role, "query": req.query, "project": project, "sources": len(response["sources"])},
     )
     return response
+
+
+@app.post("/v1/rag/model_probe")
+async def model_probe(
+    req: ModelProbeRequest,
+    x_user: str | None = Header(default=None),
+    x_role: str | None = Header(default=None),
+) -> dict[str, Any]:
+    user, role = _identity(x_user, x_role)
+
+    payload = {
+        "model": req.model,
+        "messages": [{"role": "user", "content": "OK"}],
+        "max_tokens": 8,
+    }
+
+    probe_timeout = min(max(RAG_ROUTER_TIMEOUT_S, 10.0), 35.0)
+    timeout = httpx.Timeout(
+        timeout=probe_timeout,
+        connect=min(8.0, probe_timeout),
+        read=probe_timeout,
+        write=min(15.0, probe_timeout),
+        pool=min(15.0, probe_timeout),
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            r = await client.post(
+                f"{ROUTER_BASE}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {ROUTER_KEY}"},
+            )
+            data = r.json()
+    except httpx.ReadTimeout as exc:
+        raise HTTPException(status_code=504, detail=f"Probe-Timeout bei Modell {req.model}") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail=f"Router-Verbindungsfehler: {exc}") from exc
+
+    if r.status_code >= 400:
+        err_obj = data.get("error", {}) if isinstance(data, dict) else {}
+        message = str(err_obj.get("message") or err_obj.get("code") or f"router error status {r.status_code}")
+        raise HTTPException(status_code=502, detail=message)
+
+    if isinstance(data, dict) and data.get("error"):
+        err_obj = data.get("error", {})
+        message = str(err_obj.get("message") or err_obj.get("code") or "router returned error payload")
+        raise HTTPException(status_code=502, detail=message)
+
+    answer_text = str(
+        data.get("choices", [{}])[0]
+        .get("message", {})
+        .get("content", "")
+    ).strip()
+    if not answer_text:
+        raise HTTPException(status_code=502, detail="keine modellantwort")
+
+    _audit_event("model_probe", {"user": user, "role": role, "model": req.model})
+    return {
+        "ok": True,
+        "model": req.model,
+        "router_model": data.get("model", req.model),
+    }

@@ -232,6 +232,15 @@ function addProject(projectName) {
   return cleaned;
 }
 
+function normalizeAndStoreProjectContext(value) {
+  const cleaned = addProject(value);
+  if (!cleaned) return '';
+  if (el('projectInput')) el('projectInput').value = cleaned;
+  state.activeProject = cleaned;
+  saveActiveProject();
+  return cleaned;
+}
+
 function activateProject(projectName, options = {}) {
   const cleaned = addProject(projectName);
   if (!cleaned) return false;
@@ -449,17 +458,22 @@ function loadWorkspaceTree(workspaceId, ws = null) {
 function buildStructureFromFileList(rootName, relativePaths) {
   const mkNode = () => ({ folders: new Map(), files: new Set() });
   const root = mkNode();
+  const normalizedRoot = String(rootName || '').trim().replace(/\/+$/, '');
 
   relativePaths.forEach((rawPath) => {
     const rel = String(rawPath || '').trim();
     if (!rel) return;
     const parts = rel.split('/').filter(Boolean);
+    if (normalizedRoot && parts[0] === normalizedRoot) {
+      parts.shift();
+    }
+    if (!parts.length) return;
     let node = root;
     if (parts.length <= 1) {
       node.files.add(parts[0]);
       return;
     }
-    for (let i = 1; i < parts.length; i += 1) {
+    for (let i = 0; i < parts.length; i += 1) {
       const part = parts[i];
       const isFile = i === parts.length - 1;
       if (isFile) {
@@ -836,49 +850,27 @@ function renderModelHealth() {
 }
 
 async function probeModel(model) {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 25000);
   try {
-    const res = await fetch(`${ROUTER_BASE}/v1/chat/completions`, {
+    const fallbackUser = normalizeUser(el('userInput')?.value || 'clemi') || 'clemi';
+    const headers = { 'Content-Type': 'application/json', ...authHeaders() };
+    if (!headers['X-User']) headers['X-User'] = fallbackUser;
+    if (!headers['X-Role']) headers['X-Role'] = 'admin';
+
+    const data = await requestJson(`${API_BASE}/v1/rag/model_probe`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${ROUTER_KEY}`,
-      },
-      signal: controller.signal,
+      headers,
       body: JSON.stringify({
         model,
-        messages: [{ role: 'user', content: 'OK' }],
-        max_tokens: 8,
       }),
     });
-
-    let data = null;
-    try {
-      data = await res.json();
-    } catch {
-      data = null;
-    }
-
-    if (!res.ok) {
-      const detail = data?.error?.message || data?.detail || `HTTP ${res.status}`;
-      return { ok: false, reason: String(detail) };
-    }
-
-    const answer = String(data?.choices?.[0]?.message?.content || '').trim();
-    if (!answer) return { ok: false, reason: 'keine Modellantwort' };
+    if (!data?.ok) return { ok: false, reason: 'keine Modellantwort' };
     return { ok: true, reason: '' };
   } catch (err) {
-    if (err?.name === 'AbortError') {
-      return { ok: false, reason: 'Probe-Timeout nach 25s' };
-    }
     const reason = String(err);
     if (reason.includes('NetworkError')) {
-      return { ok: false, reason: 'Netzwerkfehler zwischen Browser und Router (fetch)' };
+      return { ok: false, reason: 'Netzwerkfehler zwischen Browser und API (fetch)' };
     }
     return { ok: false, reason };
-  } finally {
-    window.clearTimeout(timeout);
   }
 }
 
@@ -960,6 +952,7 @@ async function runSmokeTests() {
       'addManualContextPathBtn',
       'sendBtn',
       'reindexBtn',
+      'fsWriteBtn',
       'checkModelsBtn',
       'runSmokeTestsBtn',
     ];
@@ -1131,6 +1124,12 @@ async function runSmokeTests() {
           headers: { 'Content-Type': 'application/json' },
         });
       }
+      if (target.includes('/v1/rag/fs/write')) {
+        return new Response(JSON.stringify({ ok: true, path: '/mnt/nas/knowledge/mim-llm/mock.txt', bytes_written: 12 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
       if (target.includes('/healthz')) {
         return new Response(JSON.stringify({ service: 'mock-api' }), {
           status: 200,
@@ -1157,6 +1156,13 @@ async function runSmokeTests() {
     const wroteAction = state.audit.some((entry) => entry.includes('| write_action |') && !auditBefore.includes(entry));
     const detail = wroteAction ? 'write_action Audit erkannt' : (el('statusBox').textContent || 'kein write_action Audit');
     push('Re-Index Button', wroteAction, detail, ['reindexBtn']);
+
+    el('fsWritePathInput').value = 'smoke-write.md';
+    el('fsWriteContentInput').value = 'smoke write';
+    ensure('fsWriteBtn').click();
+    await wait(50);
+    const wroteFile = String(el('statusBox')?.textContent || '').includes('Datei geschrieben');
+    push('Datei schreiben Button', wroteFile, String(el('statusBox')?.textContent || ''), ['fsWriteBtn']);
   } catch (err) {
     push('Senden/Re-Index', false, String(err), ['sendBtn', 'reindexBtn']);
   } finally {
@@ -1305,6 +1311,8 @@ function defaultChat(title = null) {
       workspaceId: ws?.id || state.activeWorkspaceId || 'ws-default',
       workspacePath: ws?.path || '/home/clemi/projekte/LLM',
       topK: Number(el('topKInput')?.value || 5),
+      useWeb: !!el('useWebInput')?.checked,
+      webTopK: Number(el('webTopKInput')?.value || 3),
       agentMode: el('agentModeInput')?.value || 'off',
       selectedFsPath: null,
       contextFiles: [],
@@ -1351,6 +1359,8 @@ function loadChats() {
             workspaceId: chat?.stash?.workspaceId || currentWorkspaceId,
             workspacePath: chat?.stash?.workspacePath || activeWorkspace()?.path || '/home/clemi/projekte/LLM',
             topK: Number(chat?.stash?.topK || 5),
+            useWeb: !!chat?.stash?.useWeb,
+            webTopK: Number(chat?.stash?.webTopK || 3),
             agentMode: chat?.stash?.agentMode || 'off',
             selectedFsPath: chat?.stash?.selectedFsPath || null,
             contextFiles: Array.isArray(chat?.stash?.contextFiles) ? chat.stash.contextFiles.slice(0, 30) : [],
@@ -1469,6 +1479,101 @@ function renderActiveChatHistory() {
   });
 }
 
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function formatInline(text) {
+  let html = escapeHtml(text);
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  return html;
+}
+
+function formatMessageHtml(text) {
+  const normalized = String(text || '').replace(/\r\n?/g, '\n');
+  const codeBlocks = [];
+  const withTokens = normalized.replace(/```([a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push({ lang: String(lang || '').trim(), code: String(code || '') });
+    return `@@CODEBLOCK_${idx}@@`;
+  });
+
+  const lines = withTokens.split('\n');
+  const parts = [];
+  let listMode = '';
+
+  const closeList = () => {
+    if (listMode === 'ul') parts.push('</ul>');
+    if (listMode === 'ol') parts.push('</ol>');
+    listMode = '';
+  };
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    const codeTokenMatch = trimmed.match(/^@@CODEBLOCK_(\d+)@@$/);
+    if (codeTokenMatch) {
+      closeList();
+      const block = codeBlocks[Number(codeTokenMatch[1])] || { lang: '', code: '' };
+      const langClass = block.lang ? ` class="lang-${escapeHtml(block.lang)}"` : '';
+      parts.push(`<pre><code${langClass}>${escapeHtml(block.code)}</code></pre>`);
+      return;
+    }
+
+    if (!trimmed) {
+      closeList();
+      return;
+    }
+
+    const ulMatch = line.match(/^\s*[-*]\s+(.+)$/);
+    if (ulMatch) {
+      if (!listMode) {
+        parts.push('<ul>');
+        listMode = 'ul';
+      } else if (listMode !== 'ul') {
+        closeList();
+        parts.push('<ul>');
+        listMode = 'ul';
+      }
+      parts.push(`<li>${formatInline(ulMatch[1])}</li>`);
+      return;
+    }
+
+    const olMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+    if (olMatch) {
+      if (!listMode) {
+        parts.push('<ol>');
+        listMode = 'ol';
+      } else if (listMode !== 'ol') {
+        closeList();
+        parts.push('<ol>');
+        listMode = 'ol';
+      }
+      parts.push(`<li>${formatInline(olMatch[1])}</li>`);
+      return;
+    }
+
+    closeList();
+    parts.push(`<p>${formatInline(line)}</p>`);
+  });
+
+  closeList();
+  return parts.join('');
+}
+
+function renderMessageContent(container, role, text) {
+  if (role === 'bot') {
+    container.innerHTML = formatMessageHtml(text);
+  } else {
+    container.textContent = text;
+  }
+}
+
 function renderMessages() {
   const box = el('messages');
   box.innerHTML = '';
@@ -1478,7 +1583,7 @@ function renderMessages() {
   chat.messages.forEach((entry) => {
     const div = document.createElement('div');
     div.className = `msg ${entry.role}`;
-    div.textContent = entry.text;
+    renderMessageContent(div, entry.role, entry.text);
     box.appendChild(div);
   });
   box.scrollTop = box.scrollHeight;
@@ -1494,10 +1599,12 @@ function updateChatStashFromInputs() {
   if (!chat) return;
 
   chat.stash.selectedModel = el('modelInput').value;
-  chat.stash.project = el('projectInput').value.trim() || 'mim-llm';
+  chat.stash.project = normalizeAndStoreProjectContext(el('projectInput').value) || 'mim-llm';
   chat.stash.workspaceId = ws?.id || state.activeWorkspaceId || 'ws-default';
   chat.stash.workspacePath = ws?.path || '/home/clemi/projekte/LLM';
   chat.stash.topK = Number(el('topKInput').value || 5);
+  chat.stash.useWeb = !!el('useWebInput')?.checked;
+  chat.stash.webTopK = Number(el('webTopKInput')?.value || 3);
   chat.stash.agentMode = el('agentModeInput').value;
   chat.stash.selectedFsPath = state.selectedFsPath;
   chat.updatedAt = new Date().toISOString();
@@ -1510,8 +1617,10 @@ function switchChat(nextChatId) {
 
   const chat = activeChat();
   el('modelInput').value = chat.stash.selectedModel || 'gemma2-2b';
-  el('projectInput').value = chat.stash.project || 'mim-llm';
+  el('projectInput').value = normalizeAndStoreProjectContext(chat.stash.project || 'mim-llm') || 'mim-llm';
   el('topKInput').value = String(chat.stash.topK || 5);
+  if (el('useWebInput')) el('useWebInput').checked = !!chat.stash.useWeb;
+  if (el('webTopKInput')) el('webTopKInput').value = String(chat.stash.webTopK || 3);
   el('agentModeInput').value = chat.stash.agentMode || 'off';
   chat.stash.workspaceId = state.activeWorkspaceId || chat.stash.workspaceId || 'ws-default';
   chat.stash.workspacePath = activeWorkspace()?.path || chat.stash.workspacePath || '/home/clemi/projekte/LLM';
@@ -1525,6 +1634,27 @@ function switchChat(nextChatId) {
   addAudit('chat_switch', nextChatId);
 }
 
+function resetProjectContextToWorkspace() {
+  const ws = activeWorkspace();
+  const fallback = ws?.projectHint || state.activeProject || 'mim-llm';
+  const nextProject = normalizeAndStoreProjectContext(fallback) || 'mim-llm';
+  const chat = activeChat();
+  if (chat) {
+    chat.stash.project = nextProject;
+    chat.updatedAt = new Date().toISOString();
+  }
+  if (ws) {
+    ws.projectHint = nextProject;
+    ws.lastUsedAt = new Date().toISOString();
+    saveWorkspaces();
+  }
+  renderProjectStructure();
+  renderChatSessions();
+  saveChats();
+  setStatus(`Projektkontext auf Workspace-Wert gesetzt: ${nextProject}`);
+  addAudit('project_context_reset_workspace', nextProject);
+}
+
 function appendMessage(role, text) {
   const chat = activeChat();
   if (!chat) return;
@@ -1536,12 +1666,7 @@ function appendMessage(role, text) {
   }
   chat.updatedAt = new Date().toISOString();
 
-  const box = el('messages');
-  const div = document.createElement('div');
-  div.className = `msg ${role}`;
-  div.textContent = text;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
+  renderMessages();
 
   renderActiveChatHistory();
   renderChatSessions();
@@ -1582,7 +1707,8 @@ function createTreeNode(node, basePath = '') {
     state.selectedFsPath = fullPath;
 
     const selectedLabel = el('fsSelectedPath');
-    selectedLabel.textContent = `Ausgewaehlt: ${fullPath}`;
+    const wsPath = activeWorkspace()?.path || '/home/clemi/projekte/LLM';
+    selectedLabel.textContent = `Ausgewaehlt: ${fullPath} | Workspace: ${wsPath}`;
 
     const chat = activeChat();
     if (chat) {
@@ -1910,9 +2036,22 @@ el('modelInput').addEventListener('change', () => {
   updateChatStashFromInputs();
 });
 
-// Projektwert wird aus dem aktiven Workspace abgeleitet (kein separater Projekt-Umschalter).
+el('projectInput').addEventListener('input', () => {
+  updateChatStashFromInputs();
+  renderProjectStructure();
+});
+el('projectInput').addEventListener('change', updateChatStashFromInputs);
+if (el('resetProjectContextBtn')) {
+  el('resetProjectContextBtn').addEventListener('click', resetProjectContextToWorkspace);
+}
 
 el('topKInput').addEventListener('input', updateChatStashFromInputs);
+if (el('useWebInput')) {
+  el('useWebInput').addEventListener('change', updateChatStashFromInputs);
+}
+if (el('webTopKInput')) {
+  el('webTopKInput').addEventListener('input', updateChatStashFromInputs);
+}
 el('agentModeInput').addEventListener('change', () => {
   updateChatStashFromInputs();
   addAudit('agent_mode', el('agentModeInput').value);
@@ -1973,6 +2112,8 @@ el('sendBtn').addEventListener('click', async () => {
   const model = el('modelInput').value;
   const project = el('projectInput').value.trim() || null;
   const top_k = Number(el('topKInput').value || 5);
+  const use_web = !!el('useWebInput')?.checked;
+  const web_top_k = Number(el('webTopKInput')?.value || 3);
   const agentMode = el('agentModeInput').value;
 
   const chat = activeChat();
@@ -1993,7 +2134,7 @@ el('sendBtn').addEventListener('click', async () => {
     const data = await requestJson(`${API_BASE}/v1/rag/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ query: finalQuery, model, project, top_k, agent_mode: agentMode, context_files: contextFiles }),
+      body: JSON.stringify({ query: finalQuery, model, project, top_k, use_web, web_top_k, agent_mode: agentMode, context_files: contextFiles }),
     });
 
     const answer = data.answer || 'Keine Antwort';
@@ -2057,6 +2198,57 @@ el('reindexBtn').addEventListener('click', async () => {
   } catch (err) {
     setStatus(`Re-Index Fehler: ${String(err)}`, true);
     addAudit('error', String(err));
+  }
+});
+
+el('fsWriteBtn').addEventListener('click', async () => {
+  const reason = el('reasonInput').value.trim();
+  const taskId = el('taskInput').value.trim();
+  const path = (el('fsWritePathInput')?.value || '').trim();
+  const content = String(el('fsWriteContentInput')?.value || '');
+  const append = !!el('fsWriteAppendInput')?.checked;
+
+  if (!state.session) {
+    setStatus('Login erforderlich.', true);
+    addAudit('blocked', 'fs_write ohne login');
+    return;
+  }
+  if (!['admin', 'service'].includes(state.session.role)) {
+    setStatus('Datei schreiben blockiert: Rolle darf nicht schreiben.', true);
+    addAudit('blocked', `fs_write role=${state.session.role}`);
+    return;
+  }
+  if (!reason || !taskId) {
+    setStatus('Grund und Task-ID sind Pflicht.', true);
+    addAudit('blocked', 'fs_write fehlende Pflichtmetadaten');
+    return;
+  }
+  if (!path) {
+    setStatus('Bitte Zielpfad angeben.', true);
+    return;
+  }
+
+  try {
+    const data = await requestJson(`${API_BASE}/v1/rag/fs/write`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Reason': reason,
+        'X-Task-Id': taskId,
+        ...authHeaders(),
+      },
+      body: JSON.stringify({
+        path,
+        content,
+        append,
+        project: (el('projectInput')?.value || '').trim() || null,
+      }),
+    });
+    setStatus(`Datei geschrieben: ${data.path || path} (${data.bytes_written ?? 0} bytes)`);
+    addAudit('fs_write', `${data.path || path} | append=${append}`);
+  } catch (err) {
+    setStatus(`Datei schreiben Fehler: ${String(err)}`, true);
+    addAudit('error', `fs_write ${String(err)}`);
   }
 });
 

@@ -316,6 +316,49 @@ input:focus, select:focus, textarea:focus {
 .msg { padding: .65rem .75rem; margin-bottom: .6rem; border-radius: 10px; }
 .msg.user { background: #f1e4d2; border-left: 4px solid var(--accent); }
 .msg.bot { background: #ddf0e7; border-left: 4px solid var(--accent-2); }
+.msg {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.45;
+}
+.msg p {
+  margin: 0 0 .55rem;
+}
+.msg p:last-child {
+  margin-bottom: 0;
+}
+.msg ul,
+.msg ol {
+  margin: 0 0 .55rem 1.15rem;
+  padding: 0;
+}
+.msg li {
+  margin: .2rem 0;
+}
+.msg code {
+  font-family: "IBM Plex Mono", Consolas, monospace;
+  font-size: .86em;
+  padding: .08rem .32rem;
+  border-radius: 6px;
+  background: #ffffffb8;
+  border: 1px solid #0000001a;
+}
+.msg pre {
+  margin: 0 0 .6rem;
+  padding: .6rem .68rem;
+  border-radius: 8px;
+  border: 1px solid #00000028;
+  background: #101722;
+  color: #f2f6ff;
+  overflow-x: auto;
+  white-space: pre;
+}
+.msg pre code {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
 .composer { margin-top: .8rem; }
 .contextTools {
   display: flex;

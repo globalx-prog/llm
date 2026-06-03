@@ -50,12 +50,21 @@
 
       <h2>Projektkontext</h2>
       <label>Projekt
-        <input id="projectInput" value="mim-llm" readonly />
-        <p class="fieldHelp">Projektfilter fuer RAG (aus dem aktiven Workspace abgeleitet). Fuer einen Projektwechsel bitte den Workspace wechseln.</p>
+        <input id="projectInput" value="mim-llm" />
+        <p class="fieldHelp">Projektfilter fuer RAG. Der Wert wird pro Chat gespeichert und beim Chat-Wechsel automatisch geladen.</p>
       </label>
+      <button id="resetProjectContextBtn" class="ghostBtn" type="button">Projektkontext aus Workspace uebernehmen</button>
       <label>Top-K
         <input id="topKInput" type="number" min="1" max="20" value="5" />
         <p class="fieldHelp">Anzahl der beruecksichtigten Treffer aus der Suche. Hoeher = mehr Kontext, aber auch mehr Rauschen.</p>
+      </label>
+      <label>Internetabfrage
+        <input id="useWebInput" type="checkbox" />
+        <p class="fieldHelp">Optional: zusaetzliche Web-Snippets als Kontext abrufen (DuckDuckGo Instant API).</p>
+      </label>
+      <label>Web Top-K
+        <input id="webTopKInput" type="number" min="1" max="10" value="3" />
+        <p class="fieldHelp">Wie viele Web-Treffer maximal als Zusatzkontext genutzt werden.</p>
       </label>
 
       <h2>Login / Rolle</h2>
@@ -86,6 +95,18 @@
         <p class="fieldHelp">Eindeutige Referenz auf Ticket, Change oder Arbeitspaket fuer spaetere Rueckverfolgung.</p>
       </label>
       <button id="reindexBtn">Re-Index starten</button>
+      <h3>Datei schreiben (Agent)</h3>
+      <label>Zielpfad
+        <input id="fsWritePathInput" placeholder="z. B. notizen/agent-output.md" value="agent-output.md" />
+        <p class="fieldHelp">Relativer Pfad wird im Projekt unter /mnt/nas/knowledge/&lt;projekt&gt;/ geschrieben. Absolute Pfade nur innerhalb erlaubter Roots.</p>
+      </label>
+      <label>Inhalt
+        <textarea id="fsWriteContentInput" rows="5" placeholder="Textinhalt, der geschrieben werden soll..."></textarea>
+      </label>
+      <label>Anhaengen statt ueberschreiben
+        <input id="fsWriteAppendInput" type="checkbox" />
+      </label>
+      <button id="fsWriteBtn" class="ghostBtn" type="button">Datei schreiben</button>
       <p class="hint">Nur Rollen admin/service duerfen schreiben.</p>
     </aside>
 
