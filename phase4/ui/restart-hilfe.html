@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restart Hilfe - LLM Stack</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(900px 420px at 90% -10%, #e7f6ff, transparent), var(--paper);
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid #00000020;
+      border-radius: 14px;
+      padding: .9rem;
+      margin-bottom: .85rem;
+      box-shadow: 0 10px 24px #00000011;
+    }
+    pre {
+      margin: .55rem 0;
+      background: #f2f8fc;
+      border: 1px solid #0f4e6730;
+      border-radius: 10px;
+      padding: .65rem .75rem;
+      overflow: auto;
+    }
+    code {
+      font-family: "IBM Plex Mono", Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Wie geht Restart?</h1>
+      <p>Der Stack besteht aus Router, RAG-API und UI. Nach Modell- oder API-Aenderungen die betroffenen Dienste neu starten.</p>
+    </section>
+
+    <section class="card">
+      <h2>Einzeldienste neu starten</h2>
+      <pre><code>sudo systemctl restart llm-router.service
+sudo systemctl restart llm-rag-api.service
+sudo systemctl restart llm-ui.service</code></pre>
+      <pre><code>sudo systemctl status llm-router.service --no-pager
+sudo systemctl status llm-rag-api.service --no-pager
+sudo systemctl status llm-ui.service --no-pager</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>Kompletter Stack</h2>
+      <pre><code>cd /home/clemi/projekte/LLM
+sudo /home/clemi/projekte/LLM/phase6/install_autostart_stack.sh</code></pre>
+      <p>Das Script installiert/aktualisiert Units und startet alle Dienste inklusive Timer.</p>
+    </section>
+
+    <section class="card">
+      <h2>Schnellchecks</h2>
+      <pre><code>curl -sS http://127.0.0.1:4000/healthz | jq .
+curl -sS http://127.0.0.1:4100/healthz | jq .
+curl -sS http://127.0.0.1:4100/v1/system/metrics | jq .</code></pre>
+      <pre><code>curl -sS http://127.0.0.1:11434/api/tags | jq -r '.models[].name'</code></pre>
+    </section>
+  </main>
+</body>
+</html>

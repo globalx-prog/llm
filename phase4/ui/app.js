@@ -50,7 +50,7 @@ const PROJECT_STRUCTURE = {
       children: [
         {
           name: 'ui/',
-          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'hilfe-github-tailscale.html', 'ssh-verbindung.html', 'login-prozess.html'],
+          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'hilfe-github-tailscale.html', 'ssh-verbindung.html', 'restart-hilfe.html', 'login-prozess.html'],
         },
       ],
     },
@@ -460,7 +460,7 @@ function loadUsers() {
 
 function saveSession() {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(state.session || null));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(state.session || null));
   } catch {
     // ignore storage errors
   }
@@ -468,7 +468,15 @@ function saveSession() {
 
 function loadSession() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    let raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) {
+      raw = localStorage.getItem(SESSION_KEY);
+      if (raw) {
+        sessionStorage.setItem(SESSION_KEY, raw);
+        localStorage.removeItem(SESSION_KEY);
+      }
+    }
+    const parsed = JSON.parse(raw || 'null');
     if (parsed && parsed.user) {
       state.session = { user: normalizeUser(parsed.user), role: String(parsed.role || 'reviewer') };
       el('sessionBadge').textContent = `${state.session.user} (${state.session.role})`;
@@ -934,8 +942,19 @@ function renderProjectStructure() {
 function addSelectedFileToContext() {
   const chat = activeChat();
   const path = state.selectedFsPath;
-  if (!chat || !path || path.endsWith('/')) {
-    setStatus('Bitte zuerst eine Datei im Dateisystem auswaehlen.', true);
+  if (!chat) {
+    setStatus('Kein aktiver Chat verfuegbar.', true);
+    return;
+  }
+
+  if (!path || path.endsWith('/')) {
+    const manual = (el('manualContextPathInput')?.value || '').trim();
+    if (manual) {
+      addContextFile(chat, manual, 'context_add_manual_fallback');
+      el('manualContextPathInput').value = '';
+      return;
+    }
+    setStatus('Bitte Datei im Baum waehlen oder manuellen Dateipfad eintragen.', true);
     return;
   }
 
@@ -965,9 +984,15 @@ function addContextFile(chat, path, auditType = 'context_add') {
 
 function addLocalFilesToContext(fileList) {
   const chat = activeChat();
-  if (!chat) return;
+  if (!chat) {
+    setStatus('Kein aktiver Chat verfuegbar.', true);
+    return;
+  }
   const files = Array.from(fileList || []);
-  if (!files.length) return;
+  if (!files.length) {
+    setStatus('Keine lokale Datei ausgewaehlt. Alternativ manuellen Dateipfad nutzen.', true);
+    return;
+  }
 
   let added = 0;
   files.forEach((file) => {
@@ -1030,6 +1055,20 @@ function loginCurrentUser() {
   setStatus(`Eingeloggt als ${user} (${roleLabel(role)}).`);
 }
 
+function logoutCurrentUser() {
+  state.session = null;
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore storage errors
+  }
+
+  el('sessionBadge').textContent = 'Nicht eingeloggt';
+  addAudit('logout', 'session ended');
+  setStatus('Logout erfolgreich. Session bleibt nur bis Tab-Schliessen oder Logout aktiv.');
+}
+
 async function createWorkspaceFromPicker() {
   const pickedPath = await browseWorkspaceFromFileSystem();
   if (!pickedPath) {
@@ -1089,6 +1128,7 @@ function createWorkspaceFromFileList(fileList) {
 }
 
 el('loginBtn').addEventListener('click', loginCurrentUser);
+el('logoutBtn').addEventListener('click', logoutCurrentUser);
 el('userInput').addEventListener('change', applyUserRoleHint);
 el('workspaceSelect').addEventListener('change', (ev) => {
   state.activeWorkspaceId = ev.target.value;
@@ -1127,6 +1167,13 @@ window.addEventListener('storage', (ev) => {
     return;
   }
   if (ev.key === ACTIVE_WORKSPACE_KEY) {
+    syncWorkspaceFromStorage();
+  }
+});
+
+window.addEventListener('focus', syncWorkspaceFromStorage);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
     syncWorkspaceFromStorage();
   }
 });

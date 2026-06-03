@@ -215,9 +215,14 @@
 
       (gpus || []).forEach((gpu, idx) => {
         const util = Number(gpu?.utilization_percent);
-        if (Number.isFinite(util) && util >= 90) {
+        const temp = Number(gpu?.temperature_c);
+        if (Number.isFinite(util) && util >= 70) {
           const name = gpu?.name || `GPU ${idx}`;
-          showUsageAlertOnce(`gpu_${idx}`, `${name} ueber 90%`, `GPU-Auslastung liegt bei ${util.toFixed(1)} %.`);
+          showUsageAlertOnce(`gpu_util_${idx}`, `${name} ueber 70%`, `GPU-Auslastung liegt bei ${util.toFixed(1)} %.`);
+        }
+        if (Number.isFinite(temp) && temp >= 80) {
+          const name = gpu?.name || `GPU ${idx}`;
+          showUsageAlertOnce(`gpu_temp_${idx}`, `${name} Temperatur hoch`, `GPU-Temperatur liegt bei ${temp.toFixed(1)} °C.`);
         }
       });
     }
