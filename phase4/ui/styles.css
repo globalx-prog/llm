@@ -474,6 +474,17 @@ input:focus, select:focus, textarea:focus {
   color: #8a6823;
 }
 
+button.btnTestOk {
+  border: 2px solid #1f6e44 !important;
+  box-shadow: 0 0 0 2px #1f6e4420;
+  background: linear-gradient(120deg, #2f8a56, #45a56c) !important;
+}
+
+button.btnTestFail {
+  border: 2px solid #8b1e3f !important;
+  box-shadow: 0 0 0 2px #8b1e3f20;
+}
+
 @media (max-width: 1100px) {
   .layout {
     grid-template-columns: 1fr;

@@ -425,6 +425,7 @@ function activateWorkspaceSession(ws) {
 }
 
 function syncWorkspaceFromStorage() {
+  loadWorkspaces();
   let storedId = '';
   try {
     storedId = localStorage.getItem(ACTIVE_WORKSPACE_KEY) || '';
@@ -558,7 +559,21 @@ function renderModelHealth() {
   if (!ul) return;
   ul.innerHTML = '';
 
-  Object.keys(MODEL_PROFILES).forEach((model) => {
+  const problematicModels = Object.keys(MODEL_PROFILES)
+    .filter((model) => {
+      const status = state.modelStatus[model];
+      return !status || status.ok === false;
+    });
+
+  if (!problematicModels.length) {
+    const li = document.createElement('li');
+    li.className = 'healthOk';
+    li.textContent = 'Alle geprueften Modelle sind aktuell nutzbar.';
+    ul.appendChild(li);
+    return;
+  }
+
+  problematicModels.forEach((model) => {
     const li = document.createElement('li');
     const backend = MODEL_BACKEND_TAGS[model] || '-';
     const status = state.modelStatus[model];
@@ -643,10 +658,29 @@ function renderSmokeTestResults(results) {
   });
 }
 
+function resetButtonTestHighlights() {
+  document.querySelectorAll('button.btnTestOk, button.btnTestFail').forEach((btn) => {
+    btn.classList.remove('btnTestOk', 'btnTestFail');
+  });
+}
+
+function markButtons(buttonIds, ok) {
+  (buttonIds || []).forEach((id) => {
+    const btn = el(id);
+    if (!btn) return;
+    btn.classList.remove('btnTestOk', 'btnTestFail');
+    btn.classList.add(ok ? 'btnTestOk' : 'btnTestFail');
+  });
+}
+
 async function runSmokeTests() {
   const results = [];
-  const push = (name, ok, detail = '') => results.push({ name, ok, detail });
+  const push = (name, ok, detail = '', buttonIds = []) => {
+    results.push({ name, ok, detail });
+    markButtons(buttonIds, ok);
+  };
   const wait = (ms = 20) => new Promise((resolve) => window.setTimeout(resolve, ms));
+  resetButtonTestHighlights();
 
   const ensure = (id) => {
     const node = el(id);
@@ -675,7 +709,7 @@ async function runSmokeTests() {
       'runSmokeTestsBtn',
     ];
     btnIds.forEach((id) => ensure(id));
-    push('Alle erwarteten Buttons vorhanden', true, `${btnIds.length} IDs geprueft`);
+    push('Alle erwarteten Buttons vorhanden', true, `${btnIds.length} IDs geprueft`, btnIds);
   } catch (err) {
     push('Alle erwarteten Buttons vorhanden', false, String(err));
   }
@@ -687,10 +721,30 @@ async function runSmokeTests() {
     ensure('browseWorkspaceBtn').click();
     await wait();
     const exists = state.workspaces.some((ws) => ws.path === '/tmp/smoke-ws');
-    push('Workspace Browse legt Workspace an', exists, exists ? '' : 'workspace nicht erstellt');
+    push('Workspace Browse legt Workspace an', exists, exists ? '' : 'workspace nicht erstellt', ['browseWorkspaceBtn']);
     window.showDirectoryPicker = oldPicker;
   } catch (err) {
     push('Workspace Browse legt Workspace an', false, String(err));
+  }
+
+  try {
+    const wsBefore = activeWorkspace()?.id || '';
+    const selectedBefore = state.selectedFsPath;
+    const alternate = state.workspaces.find((w) => w.id !== wsBefore);
+    if (alternate) {
+      const select = ensure('workspaceSelect');
+      select.value = alternate.id;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await wait(30);
+      const treeWorkspaceText = String(el('fsSelectedPath')?.textContent || '');
+      const switched = activeWorkspace()?.id === alternate.id && treeWorkspaceText.includes(alternate.path || '');
+      push('Workspace-Wechsel aktualisiert Suchbaum rechts', switched, treeWorkspaceText, ['workspaceSelect']);
+      state.selectedFsPath = selectedBefore;
+    } else {
+      push('Workspace-Wechsel aktualisiert Suchbaum rechts', true, 'nur ein Workspace vorhanden', ['workspaceSelect']);
+    }
+  } catch (err) {
+    push('Workspace-Wechsel aktualisiert Suchbaum rechts', false, String(err), ['workspaceSelect']);
   }
 
   try {
@@ -698,7 +752,7 @@ async function runSmokeTests() {
     ensure('newChatBtn').click();
     await wait();
     const after = Object.keys(state.chats).length;
-    push('Neuer Chat Button', after === before + 1, `vorher=${before}, nachher=${after}`);
+    push('Neuer Chat Button', after === before + 1, `vorher=${before}, nachher=${after}`, ['newChatBtn']);
   } catch (err) {
     push('Neuer Chat Button', false, String(err));
   }
@@ -709,9 +763,20 @@ async function runSmokeTests() {
     chat.messages.push({ ts: nowTs(), role: 'user', text: 'smoke message' });
     ensure('clearActiveChatBtn').click();
     await wait();
-    push('Aktiven Chat leeren', chat.messages.length === 0, `messages=${chat.messages.length}`);
+    push('Aktiven Chat leeren', chat.messages.length === 0, `messages=${chat.messages.length}`, ['clearActiveChatBtn']);
   } catch (err) {
     push('Aktiven Chat leeren', false, String(err));
+  }
+
+  try {
+    state.history = [{ ts: nowTs(), query: 'smoke', model: 'gemma2-2b', project: 'mim-llm' }];
+    saveHistory();
+    renderHistory();
+    ensure('clearHistoryBtn').click();
+    await wait();
+    push('Suchverlauf leeren', state.history.length === 0, `history=${state.history.length}`, ['clearHistoryBtn']);
+  } catch (err) {
+    push('Suchverlauf leeren', false, String(err), ['clearHistoryBtn']);
   }
 
   try {
@@ -719,7 +784,7 @@ async function runSmokeTests() {
     ensure('addManualContextPathBtn').click();
     await wait();
     const hasContext = (activeChat()?.stash?.contextFiles || []).includes('phase4/ui/index.html');
-    push('Manueller Kontextpfad', hasContext, hasContext ? '' : 'nicht hinzugefuegt');
+    push('Manueller Kontextpfad', hasContext, hasContext ? '' : 'nicht hinzugefuegt', ['addManualContextPathBtn']);
   } catch (err) {
     push('Manueller Kontextpfad', false, String(err));
   }
@@ -728,9 +793,31 @@ async function runSmokeTests() {
     ensure('clearContextFilesBtn').click();
     await wait();
     const empty = (activeChat()?.stash?.contextFiles || []).length === 0;
-    push('Kontextdateien leeren', empty, empty ? '' : 'nicht geleert');
+    push('Kontextdateien leeren', empty, empty ? '' : 'nicht geleert', ['clearContextFilesBtn']);
   } catch (err) {
     push('Kontextdateien leeren', false, String(err));
+  }
+
+  try {
+    const chat = activeChat();
+    if (!chat) throw new Error('kein aktiver Chat');
+    chat.messages.push({ ts: nowTs(), role: 'user', text: 'history reset smoke' });
+    renderMessages();
+    ensure('clearChatHistoryBtn').click();
+    await wait();
+    push('Chatverlauf leeren', (activeChat()?.messages || []).length === 0, `messages=${(activeChat()?.messages || []).length}`, ['clearChatHistoryBtn']);
+  } catch (err) {
+    push('Chatverlauf leeren', false, String(err), ['clearChatHistoryBtn']);
+  }
+
+  try {
+    ensure('checkModelsBtn').click();
+    await wait(50);
+    const statusTxt = String(el('statusBox')?.textContent || '');
+    const started = statusTxt.includes('Pruefe Modellverfuegbarkeit') || statusTxt.includes('Modellcheck abgeschlossen');
+    push('Modelle pruefen Button', started, statusTxt, ['checkModelsBtn']);
+  } catch (err) {
+    push('Modelle pruefen Button', false, String(err), ['checkModelsBtn']);
   }
 
   const oldFetch = window.fetch;
@@ -763,7 +850,7 @@ async function runSmokeTests() {
     ensure('sendBtn').click();
     await wait(80);
     const after = (activeChat()?.messages || []).length;
-    push('Senden Button', after >= before + 2, `messages vorher=${before}, nachher=${after}`);
+    push('Senden Button', after >= before + 2, `messages vorher=${before}, nachher=${after}`, ['sendBtn']);
 
     el('userInput').value = 'smoke-admin';
     el('roleInput').value = 'admin';
@@ -772,9 +859,9 @@ async function runSmokeTests() {
     ensure('reindexBtn').click();
     await wait(60);
     const ok = String(el('statusBox').textContent || '').includes('Re-Index fertig');
-    push('Re-Index Button', ok, el('statusBox').textContent || '');
+    push('Re-Index Button', ok, el('statusBox').textContent || '', ['reindexBtn']);
   } catch (err) {
-    push('Senden/Re-Index Button', false, String(err));
+    push('Senden/Re-Index', false, String(err), ['sendBtn', 'reindexBtn']);
   } finally {
     window.fetch = oldFetch;
   }
@@ -783,7 +870,7 @@ async function runSmokeTests() {
     ensure('logoutBtn').click();
     await wait();
     const loggedOut = !state.session;
-    push('Logout Button', loggedOut, loggedOut ? '' : 'session noch gesetzt');
+    push('Logout Button', loggedOut, loggedOut ? '' : 'session noch gesetzt', ['logoutBtn']);
   } catch (err) {
     push('Logout Button', false, String(err));
   }
@@ -1429,24 +1516,11 @@ el('loginBtn').addEventListener('click', loginCurrentUser);
 el('logoutBtn').addEventListener('click', logoutCurrentUser);
 el('userInput').addEventListener('change', applyUserRoleHint);
 el('workspaceSelect').addEventListener('change', (ev) => {
-  state.activeWorkspaceId = ev.target.value;
-  saveActiveWorkspace();
-  const ws = activeWorkspace();
-  if (ws) {
-    if (el('workspaceNameInput')) el('workspaceNameInput').value = ws.name || '';
-    if (el('workspacePathInput')) el('workspacePathInput').value = ws.path || '';
-    ws.lastUsedAt = new Date().toISOString();
-    saveWorkspaces();
-    if (ws.projectHint) {
-      el('projectInput').value = ws.projectHint;
-    }
-  }
-  currentProjectStructure = loadWorkspaceTree(state.activeWorkspaceId);
-  loadChats();
-  renderChatSessions();
-  switchChat(state.activeChatId);
-  renderProjectStructure();
-  addAudit('workspace_switch', state.activeWorkspaceId || '-');
+  const nextId = String(ev.target.value || '');
+  const ws = state.workspaces.find((item) => item.id === nextId);
+  if (!ws) return;
+  activateWorkspaceSession(ws);
+  addAudit('workspace_switch', ws.id);
 });
 el('browseWorkspaceBtn').addEventListener('click', createWorkspaceFromPicker);
 el('browseWorkspaceInteractiveBtn').addEventListener('click', () => {
