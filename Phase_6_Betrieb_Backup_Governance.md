@@ -21,6 +21,9 @@ Produktionsreifer Dauerbetrieb mit Monitoring, Alarmierung, Backup/Restore und k
 - `LLM/phase6/dr_runbook_test.sh`
 - `LLM/phase6/alert_smoke_check.sh`
 - `LLM/phase6/incident_runbook.md`
+- `LLM/phase6/nginx/llm-control-deck.conf`
+- `LLM/phase6/install_https_proxy.sh`
+- `LLM/phase6/https_webui.md`
 
 ## Nachweise
 - `LLM/llm-audit/phase6_alert_smoke_2026-06-03_020920.txt`

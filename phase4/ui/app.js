@@ -1,4 +1,8 @@
-const API_BASE = window.LLM_API_BASE || `${window.location.protocol}//${window.location.hostname}:4100`;
+const API_BASE = window.LLM_API_BASE || (
+  window.location.protocol === 'https:'
+    ? `${window.location.origin}/api`
+    : `${window.location.protocol}//${window.location.hostname}:4100`
+);
 
 const el = (id) => document.getElementById(id);
 
@@ -1229,7 +1233,7 @@ el('reindexBtn').addEventListener('click', async () => {
     setStatus(`API bereit: ${data.service}`);
     addAudit('boot', 'ui initialisiert');
   } catch (err) {
-    setStatus(`API nicht erreichbar (${API_BASE}). Fehler: ${String(err)}. Hinweis: llm-rag-api auf 0.0.0.0:4100 starten.`, true);
+    setStatus(`API nicht erreichbar (${API_BASE}). Fehler: ${String(err)}. Hinweis: bei HTTPS Nginx Proxy /api -> 127.0.0.1:4100 konfigurieren.`, true);
     addAudit('boot_error', String(err));
   }
 })();

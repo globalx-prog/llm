@@ -112,7 +112,11 @@
   </main>
 
   <script>
-    const API_BASE = window.LLM_API_BASE || `${window.location.protocol}//${window.location.hostname}:4100`;
+    const API_BASE = window.LLM_API_BASE || (
+      window.location.protocol === 'https:'
+        ? `${window.location.origin}/api`
+        : `${window.location.protocol}//${window.location.hostname}:4100`
+    );
 
     function setText(id, value) {
       const node = document.getElementById(id);

@@ -104,7 +104,11 @@
   </main>
 
   <script>
-    const API_BASE = window.LLM_API_BASE || `${window.location.protocol}//${window.location.hostname}:4100`;
+    const API_BASE = window.LLM_API_BASE || (
+      window.location.protocol === 'https:'
+        ? `${window.location.origin}/api`
+        : `${window.location.protocol}//${window.location.hostname}:4100`
+    );
     const USERS_KEY = 'llm-users-v1';
     const SESSION_KEY = 'llm-active-session-v1';
 
