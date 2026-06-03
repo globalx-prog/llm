@@ -139,6 +139,14 @@ async def _forward(base_url: str, body: dict[str, Any]) -> tuple[dict[str, Any],
         return r.json(), r.status_code
 
 
+def _is_upstream_failure(payload: dict[str, Any], status: int) -> bool:
+    if status >= 500:
+        return True
+    if isinstance(payload, Mapping) and payload.get("error"):
+        return True
+    return False
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, Any]:
     m = _snapshot_metrics()
@@ -271,8 +279,9 @@ async def chat(
         attempted: list[str] = [selected_model]
         try:
             payload, status = await _forward(api_base, body)
-            if status >= 500:
-                raise RuntimeError(f"upstream status {status}")
+            if _is_upstream_failure(payload, status):
+                err_msg = payload.get("error", {}).get("message") if isinstance(payload, Mapping) else None
+                raise RuntimeError(f"upstream failure status={status} message={err_msg or 'n/a'}")
             elapsed_ms = int((time.perf_counter() - started) * 1000)
             _observe_request(latency_ms=elapsed_ms, success=True, model=selected_model)
             payload["router_meta"] = {
@@ -291,7 +300,7 @@ async def chat(
                 attempted.append(fb)
                 try:
                     fb_payload, fb_status = await _forward(str(MODELS[fb]["api_base"]), body)
-                    if fb_status >= 500:
+                    if _is_upstream_failure(fb_payload, fb_status):
                         continue
                     elapsed_ms = int((time.perf_counter() - started) * 1000)
                     _observe_request(latency_ms=elapsed_ms, success=True, model=fb, used_fallback=True)

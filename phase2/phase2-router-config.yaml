@@ -27,7 +27,7 @@ models:
   deepseek-coder-16b:
     api_base: http://127.0.0.1:11434/v1
     profile: deepseek-coder-16b
-    backend_model: deepseek-coder:16b
+    backend_model: deepseek-coder-v2:16b
     model_type: deepseek-coder
     parameter_count_b: 16
   mistral-7b:
@@ -37,7 +37,10 @@ models:
     model_type: mistral
     parameter_count_b: 7
 default_model: gemma2-2b
-fallbacks: {}
+fallbacks:
+  llama3.3-70b: [gemma3-27b, gemma2-2b]
+  deepseek-r1-32b: [gemma3-27b, mistral-7b]
+  deepseek-coder-16b: [mistral-7b, gemma2-2b]
 role_token_limits:
   viewer: 800
   admin: 4000

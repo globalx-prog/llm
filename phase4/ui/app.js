@@ -767,6 +767,25 @@ async function runSmokeTests() {
   }
 
   try {
+    const firstChip = document.querySelector('.promptChip');
+    if (!firstChip) throw new Error('kein promptChip gefunden');
+    firstChip.click();
+    await wait();
+    const txt = String(el('promptInput')?.value || '').trim();
+    push('Prompt-Chips fuellen Eingabefeld', txt.length > 0, txt.slice(0, 80), []);
+  } catch (err) {
+    push('Prompt-Chips fuellen Eingabefeld', false, String(err));
+  }
+
+  try {
+    const topLinks = Array.from(document.querySelectorAll('.topbarActions a.topLink'));
+    const allHaveHref = topLinks.length >= 5 && topLinks.every((a) => String(a.getAttribute('href') || '').trim().length > 0);
+    push('Topbar-Links vorhanden und gueltig', allHaveHref, `anzahl=${topLinks.length}`);
+  } catch (err) {
+    push('Topbar-Links vorhanden und gueltig', false, String(err));
+  }
+
+  try {
     const chat = activeChat();
     if (!chat) throw new Error('kein aktiver Chat');
     chat.messages.push({ ts: nowTs(), role: 'user', text: 'smoke message' });
@@ -786,6 +805,23 @@ async function runSmokeTests() {
     push('Suchverlauf leeren', state.history.length === 0, `history=${state.history.length}`, ['clearHistoryBtn']);
   } catch (err) {
     push('Suchverlauf leeren', false, String(err), ['clearHistoryBtn']);
+  }
+
+  try {
+    const files = [
+      { name: 'index.html', webkitRelativePath: 'demo-ws/index.html' },
+      { name: 'app.js', webkitRelativePath: 'demo-ws/src/app.js' },
+      { name: 'readme.md', webkitRelativePath: 'demo-ws/docs/readme.md' },
+    ];
+    el('workspaceNameInput').value = '';
+    el('workspacePathInput').value = '';
+    createWorkspaceFromFileList(files);
+    await wait(40);
+    const ws = activeWorkspace();
+    const ok = !!ws && ws.path.includes('/home/clemi/projekte/demo-ws') && !!currentProjectStructure?.children?.length;
+    push('Interaktiver FS-Browse importiert Struktur', ok, ws ? `${ws.name} @ ${ws.path}` : 'kein workspace');
+  } catch (err) {
+    push('Interaktiver FS-Browse importiert Struktur', false, String(err));
   }
 
   try {
