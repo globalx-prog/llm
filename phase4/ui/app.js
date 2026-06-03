@@ -374,6 +374,56 @@ function workspaceTreeKey(workspaceId) {
   return `${WORKSPACE_TREE_PREFIX}:${workspaceId}`;
 }
 
+function cloneTree(tree) {
+  try {
+    return JSON.parse(JSON.stringify(tree));
+  } catch {
+    return PROJECT_STRUCTURE;
+  }
+}
+
+function workspaceBasename(pathValue) {
+  const cleaned = String(pathValue || '').trim().replace(/\/+$/, '');
+  return cleaned.split('/').filter(Boolean).slice(-1)[0] || 'workspace';
+}
+
+function defaultTreeForWorkspace(ws) {
+  const wsPath = String(ws?.path || '').trim();
+  const wsName = String(ws?.name || '').trim() || workspaceBasename(wsPath);
+
+  if (wsPath === '/home/clemi/projekte/LLM') {
+    return cloneTree(PROJECT_STRUCTURE);
+  }
+
+  return {
+    name: `${wsName}/`,
+    children: [
+      'README.md',
+      'src/',
+      'docs/',
+      'tests/',
+      {
+        name: 'hinweise/',
+        children: [
+          'Dateibaum_platzhalter.txt',
+          `Workspace_Pfad_${workspaceBasename(wsPath)}.txt`,
+        ],
+      },
+    ],
+  };
+}
+
+function hasWorkspaceTree(workspaceId) {
+  try {
+    const raw = localStorage.getItem(workspaceTreeKey(workspaceId));
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return !!(parsed && parsed.name && Array.isArray(parsed.children));
+  } catch {
+    return false;
+  }
+}
+
 function saveWorkspaceTree(workspaceId, tree) {
   if (!workspaceId || !tree) return;
   try {
@@ -383,8 +433,8 @@ function saveWorkspaceTree(workspaceId, tree) {
   }
 }
 
-function loadWorkspaceTree(workspaceId) {
-  if (!workspaceId) return PROJECT_STRUCTURE;
+function loadWorkspaceTree(workspaceId, ws = null) {
+  if (!workspaceId) return cloneTree(PROJECT_STRUCTURE);
   try {
     const parsed = JSON.parse(localStorage.getItem(workspaceTreeKey(workspaceId)) || 'null');
     if (parsed && parsed.name && Array.isArray(parsed.children)) {
@@ -393,7 +443,7 @@ function loadWorkspaceTree(workspaceId) {
   } catch {
     // ignore parse errors
   }
-  return PROJECT_STRUCTURE;
+  return defaultTreeForWorkspace(ws);
 }
 
 function buildStructureFromFileList(rootName, relativePaths) {
@@ -563,6 +613,9 @@ function createWorkspace(name, path) {
     state.activeWorkspaceId = existing.id;
     saveActiveWorkspace();
     saveWorkspaces();
+    if (!hasWorkspaceTree(existing.id)) {
+      saveWorkspaceTree(existing.id, defaultTreeForWorkspace(existing));
+    }
     renderWorkspaceSelect();
     return existing;
   }
@@ -580,6 +633,7 @@ function createWorkspace(name, path) {
   state.activeWorkspaceId = created.id;
   saveActiveWorkspace();
   saveWorkspaces();
+  saveWorkspaceTree(created.id, defaultTreeForWorkspace(created));
   renderWorkspaceSelect();
   return created;
 }
@@ -588,7 +642,10 @@ function activateWorkspaceSession(ws) {
   if (!ws) return;
   state.activeWorkspaceId = ws.id;
   saveActiveWorkspace();
-  currentProjectStructure = loadWorkspaceTree(ws.id);
+  currentProjectStructure = loadWorkspaceTree(ws.id, ws);
+  if (!hasWorkspaceTree(ws.id)) {
+    saveWorkspaceTree(ws.id, currentProjectStructure);
+  }
   state.selectedFsPath = null;
   if (el('workspaceNameInput')) el('workspaceNameInput').value = ws.name || '';
   if (el('workspacePathInput')) el('workspacePathInput').value = ws.path || '';
@@ -1810,14 +1867,20 @@ el('workspaceDirInput').addEventListener('change', (ev) => {
   ev.target.value = '';
 });
 el('newWorkspaceBtn').addEventListener('click', createWorkspaceFromPrompt);
-el('projectSelect').addEventListener('change', (ev) => {
-  const nextProject = normalizeProjectName(ev.target.value || '');
-  if (!nextProject) return;
-  activateProject(nextProject, { updateWorkspace: true, auditType: 'project_switch_select' });
-  setStatus(`Projekt gewechselt: ${nextProject}`);
-});
-el('openProjectBtn').addEventListener('click', openProjectFromPrompt);
-el('newProjectBtn').addEventListener('click', createProjectFromPrompt);
+if (el('projectSelect')) {
+  el('projectSelect').addEventListener('change', (ev) => {
+    const nextProject = normalizeProjectName(ev.target.value || '');
+    if (!nextProject) return;
+    activateProject(nextProject, { updateWorkspace: true, auditType: 'project_switch_select' });
+    setStatus(`Projekt gewechselt: ${nextProject}`);
+  });
+}
+if (el('openProjectBtn')) {
+  el('openProjectBtn').addEventListener('click', openProjectFromPrompt);
+}
+if (el('newProjectBtn')) {
+  el('newProjectBtn').addEventListener('click', createProjectFromPrompt);
+}
 
 window.addEventListener('storage', (ev) => {
   if (ev.key === WORKSPACES_KEY) {
@@ -1847,11 +1910,7 @@ el('modelInput').addEventListener('change', () => {
   updateChatStashFromInputs();
 });
 
-el('projectInput').addEventListener('input', () => {
-  const value = normalizeProjectName(el('projectInput').value);
-  if (!value) return;
-  activateProject(value, { updateWorkspace: true, auditType: 'project_input_edit' });
-});
+// Projektwert wird aus dem aktiven Workspace abgeleitet (kein separater Projekt-Umschalter).
 
 el('topKInput').addEventListener('input', updateChatStashFromInputs);
 el('agentModeInput').addEventListener('change', () => {
