@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -181,6 +182,30 @@ def _dedupe_local_hits(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
         seen.add(key)
         deduped.append(hit)
     return deduped
+
+
+def _prefer_web_sources(query: str, use_web: bool, web_hits: list[dict[str, str]]) -> bool:
+    if not use_web or not web_hits:
+        return False
+    q = str(query or "").lower()
+    markers = (
+        "wer ",
+        "was ",
+        "wann ",
+        "wo ",
+        "champions league",
+        "bundesliga",
+        "weltmeister",
+        "wahl",
+        "aktuell",
+        "heute",
+        "news",
+    )
+    return any(marker in q for marker in markers)
+
+
+def _years_in_text(text: str) -> list[str]:
+    return re.findall(r"\b(19\d{2}|20\d{2}|21\d{2})\b", str(text or ""))
 
 
 async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
@@ -722,21 +747,41 @@ async def answer(
     retrieval = pipeline.search(req.query, req.top_k, project)
     hits = _dedupe_local_hits(retrieval.get("hits", []))
     web_hits = await _web_search_snippets(req.query, req.web_top_k) if req.use_web else []
+    prefer_web = _prefer_web_sources(req.query, req.use_web, web_hits)
+
+    if prefer_web:
+        ordered_sources = [
+            {
+                "project": "web",
+                "title": item.get("title", "Web"),
+                "path": item.get("url", ""),
+                "snippet": item.get("snippet", ""),
+            }
+            for item in web_hits
+        ] + [h.get("source", {}) for h in hits]
+    else:
+        ordered_sources = [h.get("source", {}) for h in hits] + [
+            {
+                "project": "web",
+                "title": item.get("title", "Web"),
+                "path": item.get("url", ""),
+                "snippet": item.get("snippet", ""),
+            }
+            for item in web_hits
+        ]
 
     context_blocks = []
-    for i, hit in enumerate(hits, start=1):
-        src = hit.get("source", {})
-        context_blocks.append(
-            f"[{i}] ({src.get('project','')}) {src.get('path','')}\n{hit.get('text','')}"
-        )
-
-    offset = len(context_blocks)
-    for j, item in enumerate(web_hits, start=1):
-        label_idx = offset + j
-        title = item.get("title", "Web")
-        url = item.get("url", "")
-        snippet = item.get("snippet", "")
-        context_blocks.append(f"[{label_idx}] (web) {title} | {url}\n{snippet}")
+    for i, src in enumerate(ordered_sources, start=1):
+        proj = str(src.get("project", "") or "")
+        title = str(src.get("title", "") or src.get("path", "") or "")
+        path = str(src.get("path", "") or "")
+        snippet = str(src.get("snippet", "") or "")
+        source_text = snippet
+        if not source_text:
+            # Local retrieval chunks provide text in hits, not in sources.
+            match = next((h for h in hits if h.get("source", {}).get("path") == path and h.get("source", {}).get("project") == proj), None)
+            source_text = str((match or {}).get("text", ""))
+        context_blocks.append(f"[{i}] ({proj}) {title} | {path}\n{source_text}")
 
     if not context_blocks:
         return {
@@ -750,7 +795,9 @@ async def answer(
 
     system_prompt = (
         "Du bist ein Assistent. Nutze nur den gegebenen Kontext. "
-        "Wenn die Information nicht aus dem Kontext hervorgeht, sage das klar."
+        "Wenn die Information nicht aus dem Kontext hervorgeht, sage das klar. "
+        "Wenn in der Frage ein konkretes Jahr vorkommt, nenne Gewinner/Fakten nur dann, "
+        "wenn genau dieses Jahr im Kontext eindeutig belegt ist; sonst antworte 'Unklar im Kontext'."
     )
     user_prompt = (
         "Frage:\n" + req.query + "\n\nKontext:\n" + "\n\n".join(context_blocks) + "\n\n"
@@ -813,24 +860,23 @@ async def answer(
         .get("content", "Keine Antwort vom Modell erhalten.")
     )
 
+    query_years = _years_in_text(req.query)
+    if query_years:
+        qy = query_years[0]
+        answer_years = _years_in_text(answer_text)
+        if qy not in answer_years:
+            answer_text = f"Unklar im Kontext fuer das Jahr {qy}."
+
     response = {
         "answer": answer_text,
-        "sources": [h.get("source", {}) for h in hits]
-        + [
-            {
-                "project": "web",
-                "title": item.get("title", "Web"),
-                "path": item.get("url", ""),
-                "snippet": item.get("snippet", ""),
-            }
-            for item in web_hits
-        ],
+        "sources": ordered_sources,
         "retrieval": retrieval,
         "model": data.get("model", req.model),
         "router_meta": data.get("router_meta", {}),
         "project": project,
         "web_used": bool(req.use_web),
         "web_hits": len(web_hits),
+        "source_strategy": "web_first" if prefer_web else "local_first",
         "low_confidence": False,
     }
     _audit_event(
