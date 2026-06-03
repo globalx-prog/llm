@@ -1254,6 +1254,55 @@ async function requestJson(url, options = {}) {
   return data || {};
 }
 
+function userMatchesSession(candidateUser, sessionUser) {
+  const cand = normalizeUser(candidateUser).toLowerCase();
+  const sess = normalizeUser(sessionUser).toLowerCase();
+  if (!cand || !sess) return false;
+  if (cand === sess) return true;
+  if (sess.startsWith(`${cand}@`)) return true;
+  if (sess.endsWith(`\\${cand}`)) return true;
+  return false;
+}
+
+async function syncAllowedProjectsFromApi() {
+  if (!state.session?.user) return [];
+  try {
+    const data = await requestJson(`${API_BASE}/v1/rag/users`, {
+      method: 'GET',
+      headers: { ...authHeaders() },
+    });
+    const users = Array.isArray(data?.users) ? data.users : [];
+    if (!users.length) return [];
+
+    const me = users.find((u) => userMatchesSession(u?.user, state.session.user));
+    const allowed = Array.isArray(me?.projects)
+      ? me.projects.map((p) => normalizeProjectName(p)).filter(Boolean)
+      : [];
+
+    if (me?.user) {
+      const mappedUser = normalizeUser(me.user);
+      const known = state.users.find((u) => normalizeUser(u.user).toLowerCase() === mappedUser.toLowerCase());
+      const role = String(me.role || state.session.role || 'reviewer');
+      if (known) {
+        known.role = role;
+        if (allowed.length) known.projects = allowed;
+      } else {
+        state.users.push({ user: mappedUser, role, projects: allowed.length ? allowed : ['mim-llm'] });
+      }
+      saveUsers();
+      updateUserSuggestions();
+    }
+
+    if (allowed.length) {
+      allowed.forEach((p) => addProject(p));
+      renderProjectSelect();
+    }
+    return allowed;
+  } catch {
+    return [];
+  }
+}
+
 function saveHistory() {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history.slice(0, 30)));
@@ -2122,7 +2171,7 @@ el('sendBtn').addEventListener('click', async () => {
   if (!query) return;
 
   const model = el('modelInput').value;
-  const project = el('projectInput').value.trim() || null;
+  let project = el('projectInput').value.trim() || null;
   const top_k = Number(el('topKInput').value || 5);
   const use_web = !!el('useWebInput')?.checked;
   const web_top_k = Number(el('webTopKInput')?.value || 3);
@@ -2142,12 +2191,30 @@ el('sendBtn').addEventListener('click', async () => {
 
   updateChatStashFromInputs();
 
+  const postAnswer = async (projectOverride = project) => requestJson(`${API_BASE}/v1/rag/answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ query: finalQuery, model, project: projectOverride, top_k, use_web, web_top_k, agent_mode: agentMode, context_files: contextFiles }),
+  });
+
   try {
-    const data = await requestJson(`${API_BASE}/v1/rag/answer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ query: finalQuery, model, project, top_k, use_web, web_top_k, agent_mode: agentMode, context_files: contextFiles }),
-    });
+    let data;
+    try {
+      data = await postAnswer(project);
+    } catch (firstErr) {
+      const msg = String(firstErr || '');
+      if (!/project access denied|project required/i.test(msg)) throw firstErr;
+
+      const allowed = await syncAllowedProjectsFromApi();
+      const fallbackProject = normalizeProjectName(allowed[0] || '');
+      if (!fallbackProject) throw firstErr;
+
+      activateProject(fallbackProject, { updateWorkspace: true, auditType: 'project_auto_fix' });
+      updateChatStashFromInputs();
+      project = fallbackProject;
+      data = await postAnswer(project);
+      addAudit('project_auto_fix', `auto switched to ${project}`);
+    }
 
     const answer = data.answer || 'Keine Antwort';
     appendMessage('bot', answer);
