@@ -6,9 +6,13 @@ models:
   fast:
     api_base: http://127.0.0.1:8001/v1
     profile: fast
+  gemma4:
+    api_base: http://127.0.0.1:8002/v1
+    profile: gemma4
 default_model: fast
 fallbacks:
   quality: [fast]
+  gemma4: [quality, fast]
 role_token_limits:
   viewer: 800
   admin: 4000

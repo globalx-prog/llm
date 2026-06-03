@@ -1,0 +1,17 @@
+[Unit]
+Description=Phase2 Gemma4 Model Profile (OpenAI-compatible mock)
+After=network.target
+
+[Service]
+Type=simple
+User=clemi
+WorkingDirectory=/home/clemi/projekte/LLM/phase2
+Environment=MODEL_ID=gemma4
+Environment=PROFILE=gemma4
+Environment=BASE_DELAY_MS=320
+ExecStart=/home/clemi/projekte/LLM/.venvs/phase2/bin/uvicorn mock_model_server:app --host 127.0.0.1 --port 8002
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -127,6 +127,7 @@ input:focus, select:focus, textarea:focus {
 .modelLink:hover { filter: brightness(1.1); }
 .modelInfo.fast { border-left-color: var(--accent-2); }
 .modelInfo.quality { border-left-color: var(--accent); }
+.modelInfo.gemma4 { border-left-color: #4a5eb8; }
 
 .messages {
   min-height: 420px;
