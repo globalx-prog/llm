@@ -6,6 +6,12 @@ models:
     backend_model: gemma2:2b
     model_type: gemma2
     parameter_count_b: 2.6
+  gemma3-27b:
+    api_base: http://127.0.0.1:11434/v1
+    profile: gemma3-27b
+    backend_model: gemma3:27b
+    model_type: gemma3
+    parameter_count_b: 27
 default_model: gemma2-2b
 fallbacks: {}
 role_token_limits:

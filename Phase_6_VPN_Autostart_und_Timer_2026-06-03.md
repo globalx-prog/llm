@@ -78,3 +78,33 @@ Bedeutung der Timer-Felder in `llm-backup-daily.timer`:
 - RAG-VPN Override: `phase6/systemd/llm-rag-api-vpn.override.conf`
 - Backup-Timer Installer: `phase6/install_backup_timer.sh`
 - Phase-6 Kern-Doku: `Phase_6_Betrieb_Backup_Governance.md`
+
+## 5) Ollama-Modelle auf Datenpartition (Snap + /mnt/data)
+Bei Snap-Installationen kann der direkte Pfad `/data/...` durch Confinement fehlschlagen (typisch: `permission denied`).
+Der produktive Weg ist daher:
+- `/data` per Bind-Mount nach `/mnt/data` spiegeln
+- Ollama-Models auf `/mnt/data/ollama/models` setzen
+
+### Einmalig einrichten
+```bash
+sudo snap connect ollama:removable-media
+sudo mkdir -p /mnt/data
+sudo mount --bind /data /mnt/data
+echo '/data /mnt/data none bind 0 0' | sudo tee -a /etc/fstab
+sudo mkdir -p /mnt/data/ollama/models
+sudo snap set ollama models=/mnt/data/ollama/models
+sudo snap restart ollama
+```
+
+### Verifizieren
+```bash
+snap services ollama
+ollama list
+snap get ollama models
+df -h /mnt/data/ollama/models /data
+```
+
+Erwartung:
+- `ollama.listener` ist `aktiv`
+- Modelle (z. B. `gemma2:2b`, `gemma3:27b`) sind sichtbar
+- `snap get ollama models` zeigt `/mnt/data/ollama/models`

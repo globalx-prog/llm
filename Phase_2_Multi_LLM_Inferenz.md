@@ -6,13 +6,14 @@ Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzba
 ## Umsetzungsstand (2026-06-03)
 - Native Services statt Container umgesetzt.
 - Modell-Endpunkte aktiv:
-  - gemma2-2b auf `127.0.0.1:11434` (Ollama)
+  - gemma2-2b auf `127.0.0.1:11434` (Ollama, `gemma2:2b`)
+  - gemma3-27b auf `127.0.0.1:11434` (Ollama, `gemma3:27b`)
 - Router-Endpunkt aktiv auf `127.0.0.1:4000` mit OpenAI-kompatiblen Routen:
   - `GET /v1/models`
   - `POST /v1/chat/completions`
 - API-Key-Regel aktiv (`Authorization: Bearer change_me_phase2`).
 - Rollenbasierte Tokenlimits aktiv (`viewer: 800`, `admin: 4000`).
-- Single-Model Betrieb aktiv: `gemma2-2b`.
+- Multi-Model Betrieb aktiv: `gemma2-2b` (default) und `gemma3-27b`.
 
 ## Wichtige Abweichung (LiteLLM)
 - LiteLLM konnte in dieser Umgebung nicht stabil installiert werden, da die Abhaengigkeit `orjson` in der aufgeloesten Version auf Python 3.14 nicht baute (PyO3-Versionlimit).
@@ -25,8 +26,7 @@ Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzba
 - Modellspeicher unter /data/models bereitstellen.
 
 2. Modellserver starten
-- Modellprofil gemma2-2b ueber Ollama auf Port 11434.
-- Optional spaeter weitere Profile ergaenzen.
+- Modellprofile gemma2-2b und gemma3-27b ueber Ollama auf Port 11434.
 
 3. LiteLLM als Router
 - Einheitlicher Endpoint (z. B. /v1).
@@ -39,12 +39,12 @@ Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzba
 
 5. UI-relevante API-Standards
 - Einheitliche Fehlercodes und Fehlermeldungen fuer Frontend-Anzeige.
-- Modellmetadaten (Profil gemma2-2b, Limits, Verfuegbarkeit) maschinenlesbar bereitstellen.
+- Modellmetadaten (Profile gemma2-2b/gemma3-27b, Limits, Verfuegbarkeit) maschinenlesbar bereitstellen.
 - Antwortmetadaten fuer UI ausgeben (Latenz, Modellname, Tokenverbrauch).
 
 ## DoD
-- [x] Modellprofil gemma2-2b liefert reproduzierbare Antworten.
-- [x] Router routet korrekt auf gemma2-2b.
+- [x] Modellprofile gemma2-2b und gemma3-27b liefern reproduzierbare Antworten.
+- [x] Router routet korrekt auf beide Profile.
 - [x] Lasttest mit parallelen Requests bestanden.
 - [x] Fehlerpfade sind konsistent abgebildet.
 - [x] Frontend kann Fehlermeldungen und Metadaten konsistent darstellen.
@@ -82,8 +82,8 @@ sudo apt update && sudo apt -y install k6
 
 1. Modellpfade vorbereiten
 ```bash
-sudo mkdir -p /data/models/gemma2-2b /data/litellm
-sudo chown -R $USER:$USER /data/models /data/litellm
+sudo mkdir -p /data/litellm /mnt/data/ollama/models
+sudo chown -R $USER:$USER /data/litellm /mnt/data/ollama
 ```
 
 2. LiteLLM Konfiguration anlegen
@@ -93,6 +93,11 @@ model_list:
   - model_name: gemma2-2b
     litellm_params:
       model: openai/gemma2:2b
+      api_base: http://127.0.0.1:11434/v1
+      api_key: dummy
+  - model_name: gemma3-27b
+    litellm_params:
+      model: openai/gemma3:27b
       api_base: http://127.0.0.1:11434/v1
       api_key: dummy
 general_settings:
