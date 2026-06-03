@@ -28,6 +28,11 @@
       box-shadow: 0 10px 24px #00000010;
     }
     .meta { opacity: .78; font-size: .9rem; }
+    .reason {
+      margin-top: .35rem;
+      font-size: .8rem;
+      color: #31586c;
+    }
     .toolbar {
       display: flex;
       gap: .55rem;
@@ -88,6 +93,7 @@
     <section class="card">
       <h2>Aktueller Workspace</h2>
       <div id="currentWorkspaceBox" class="meta">Wird geladen...</div>
+      <div id="currentWorkspaceReason" class="reason"></div>
       <ul id="currentWorkspaceChats" class="sublist"></ul>
     </section>
 
@@ -140,6 +146,14 @@
       }
     }
 
+    function setActiveWorkspaceId(id) {
+      try {
+        localStorage.setItem(ACTIVE_WORKSPACE_KEY, String(id || ''));
+      } catch {
+        // ignore storage errors
+      }
+    }
+
     function getWorkspaceChats(wsId) {
       if (!wsId) return [];
       const all = [];
@@ -172,22 +186,31 @@
     function renderCurrentWorkspace(workspaces) {
       let currentId = activeWorkspaceId();
       const box = document.getElementById('currentWorkspaceBox');
+      const reason = document.getElementById('currentWorkspaceReason');
       const list = document.getElementById('currentWorkspaceChats');
       list.innerHTML = '';
+      reason.textContent = '';
 
       if (!currentId && workspaces.length) {
         currentId = String(workspaces[0].id || '');
+        reason.textContent = 'Hinweis: Kein aktiver Workspace-Key gefunden. Fallback auf den neuesten Workspace wurde gesetzt.';
       }
 
       const ws = workspaces.find((item) => String(item.id) === currentId) || workspaces[0] || null;
       if (!ws) {
         box.textContent = 'Kein aktiver Workspace gesetzt.';
+        reason.textContent = 'Ursache: Es sind aktuell keine Workspaces in localStorage vorhanden.';
         return;
       }
 
+      if (String(ws.id) !== currentId) {
+        reason.textContent = 'Hinweis: Aktiver Workspace-Key war veraltet. Er wurde auf einen vorhandenen Workspace korrigiert.';
+      }
+      setActiveWorkspaceId(ws.id);
+
       box.innerHTML = `<strong>${ws.name || '-'}</strong> | <span class="mono">${ws.path || '-'}</span> | Letzte Nutzung: ${fmtTs(ws.lastUsedAt)}`;
 
-      const chats = getWorkspaceChats(currentId);
+      const chats = getWorkspaceChats(ws.id);
       if (!chats.length) {
         const li = document.createElement('li');
         li.textContent = 'Keine Chats fuer den aktuellen Workspace gefunden.';

@@ -64,12 +64,57 @@
       font-size: .82rem;
       line-height: 1.35;
     }
+    .alertStack {
+      position: fixed;
+      top: .8rem;
+      right: .8rem;
+      width: min(380px, calc(100vw - 1.6rem));
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: .5rem;
+    }
+    .alertCard {
+      background: #fff1f4;
+      border: 1px solid #8b1e3f40;
+      border-left: 5px solid #8b1e3f;
+      border-radius: 10px;
+      padding: .55rem .65rem;
+      box-shadow: 0 10px 24px #00000018;
+    }
+    .alertHead {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .45rem;
+      margin-bottom: .25rem;
+    }
+    .alertTitle {
+      font-weight: 700;
+      font-size: .87rem;
+      color: #7a1636;
+    }
+    .alertClose {
+      border: 0;
+      border-radius: 8px;
+      background: #8b1e3f;
+      color: white;
+      width: auto;
+      padding: .22rem .45rem;
+      font-size: .75rem;
+      cursor: pointer;
+    }
+    .alertBody {
+      font-size: .82rem;
+      line-height: 1.32;
+    }
     table { width: 100%; border-collapse: collapse; font-size: .85rem; }
     th, td { padding: .38rem .46rem; border-bottom: 1px solid #0000001f; text-align: left; }
     th { font-weight: 700; }
   </style>
 </head>
 <body>
+  <div id="alertStack" class="alertStack" aria-live="assertive"></div>
   <main>
     <section class="card">
       <h1>Hardware / Runtime Ueberwachung</h1>
@@ -129,6 +174,52 @@
 
     function fmtTemp(value) {
       return Number.isFinite(value) ? `${value.toFixed(1)} °C` : 'n/a';
+    }
+
+    const warnedComponents = new Set();
+
+    function showUsageAlertOnce(key, title, details) {
+      if (warnedComponents.has(key)) return;
+      warnedComponents.add(key);
+
+      const stack = document.getElementById('alertStack');
+      if (!stack) return;
+
+      const card = document.createElement('div');
+      card.className = 'alertCard';
+      card.dataset.key = key;
+      card.innerHTML = `
+        <div class="alertHead">
+          <div class="alertTitle">${title}</div>
+          <button type="button" class="alertClose">Schliessen</button>
+        </div>
+        <div class="alertBody">${details}</div>
+      `;
+      const closeBtn = card.querySelector('.alertClose');
+      closeBtn.addEventListener('click', () => {
+        card.remove();
+      });
+      stack.appendChild(card);
+    }
+
+    function maybeWarnHighUsage(cpu, ram, gpus) {
+      const cpuUtil = Number(cpu?.utilization_percent);
+      const ramUtil = Number(ram?.utilization_percent);
+
+      if (Number.isFinite(cpuUtil) && cpuUtil >= 90) {
+        showUsageAlertOnce('cpu_total', 'CPU ueber 90%', `CPU-Auslastung liegt bei ${cpuUtil.toFixed(1)} %.`);
+      }
+      if (Number.isFinite(ramUtil) && ramUtil >= 90) {
+        showUsageAlertOnce('ram_total', 'RAM ueber 90%', `RAM-Auslastung liegt bei ${ramUtil.toFixed(1)} %.`);
+      }
+
+      (gpus || []).forEach((gpu, idx) => {
+        const util = Number(gpu?.utilization_percent);
+        if (Number.isFinite(util) && util >= 90) {
+          const name = gpu?.name || `GPU ${idx}`;
+          showUsageAlertOnce(`gpu_${idx}`, `${name} ueber 90%`, `GPU-Auslastung liegt bei ${util.toFixed(1)} %.`);
+        }
+      });
     }
 
     function renderCpuCores(items) {
@@ -207,6 +298,7 @@
         renderCpuCores(cpu.cores || []);
         renderGpus(gpus);
         updateGpuHint(gpus, probe);
+        maybeWarnHighUsage(cpu, ram, gpus);
       } catch {
         status.textContent = 'OFFLINE';
         status.className = 'v status warn';

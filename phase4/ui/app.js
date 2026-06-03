@@ -494,6 +494,30 @@ function setStatus(text, warn = false) {
   box.style.borderColor = warn ? '#8b1e3f66' : '#00000022';
 }
 
+function renderUiHealth() {
+  const list = el('uiHealthList');
+  if (!list) return;
+  const checks = [
+    ['workspaceSelect', 'Workspace Auswahl'],
+    ['browseWorkspaceBtn', 'Workspace Browse Button'],
+    ['browseWorkspaceInteractiveBtn', 'Interaktiv Browse Button'],
+    ['newWorkspaceBtn', 'Neuer Workspace Button'],
+    ['addSelectedFileBtn', 'Datei aus Baum hinzufuegen'],
+    ['addLocalFilesBtn', 'Einzeldateien hinzufuegen'],
+    ['sendBtn', 'Senden Button'],
+    ['loginBtn', 'Login Button'],
+  ];
+
+  list.innerHTML = '';
+  checks.forEach(([id, label]) => {
+    const li = document.createElement('li');
+    const ok = !!el(id);
+    li.className = ok ? 'healthOk' : 'healthWarn';
+    li.textContent = `${ok ? 'OK' : 'FEHLT'} | ${label}`;
+    list.appendChild(li);
+  });
+}
+
 function authHeaders() {
   if (!state.session) return {};
   return {
@@ -1239,6 +1263,7 @@ el('reindexBtn').addEventListener('click', async () => {
   renderChatSessions();
   switchChat(state.activeChatId);
   renderProjectStructure();
+  renderUiHealth();
   updateModelInfo();
 
   if (state.session?.user) {
