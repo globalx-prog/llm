@@ -35,6 +35,9 @@ access_policy:
   clemi:
     role: admin
     projects: [mim-llm, mim-ops]
+  globalx-prog:
+    role: admin
+    projects: [mim-llm, mim-ops]
   reviewer:
     role: reviewer
     projects: [mim-llm]

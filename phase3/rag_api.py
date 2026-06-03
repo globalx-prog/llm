@@ -111,21 +111,60 @@ def _effective_policy() -> dict[str, Any]:
     return merged
 
 
+def _user_aliases(user: str) -> list[str]:
+    raw = str(user or "").strip()
+    if not raw:
+        return []
+
+    aliases: list[str] = [raw]
+    if "@" in raw:
+        aliases.append(raw.split("@", 1)[0].strip())
+    if "\\" in raw:
+        aliases.append(raw.rsplit("\\", 1)[-1].strip())
+
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for alias in aliases:
+        key = alias.lower()
+        if alias and key not in seen:
+            seen.add(key)
+            deduped.append(alias)
+    return deduped
+
+
+def _policy_entry_for_user(user: str, policy: dict[str, Any]) -> tuple[str, dict[str, Any]] | tuple[None, None]:
+    if not user:
+        return None, None
+
+    # Fast path: exact key lookup.
+    if user in policy and isinstance(policy[user], dict):
+        return user, policy[user]
+
+    lower_index = {str(k).lower(): str(k) for k in policy.keys()}
+    for alias in _user_aliases(user):
+        alias_l = alias.lower()
+        key = lower_index.get(alias_l)
+        if key and isinstance(policy.get(key), dict):
+            return key, policy[key]
+    return None, None
+
+
 def _identity(x_user: str | None, x_role: str | None) -> tuple[str, str]:
     user = (x_user or "").strip()
     role = (x_role or "").strip()
     if not user:
         raise HTTPException(status_code=401, detail="missing user identity")
 
-    policy = _effective_policy().get(user)
-    if not policy:
+    effective = _effective_policy()
+    matched_user, policy = _policy_entry_for_user(user, effective)
+    if not policy or not matched_user:
         raise HTTPException(status_code=403, detail="user not allowed")
 
     expected_role = str(policy.get("role", "")).strip()
     if role and expected_role and role != expected_role:
         raise HTTPException(status_code=403, detail="role mismatch")
 
-    return user, expected_role or role or "unknown"
+    return matched_user, expected_role or role or "unknown"
 
 
 def _enforce_project(user: str, project: str | None) -> str:
