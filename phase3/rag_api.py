@@ -247,6 +247,57 @@ def _years_in_text(text: str) -> list[str]:
     return re.findall(r"\b(19\d{2}|20\d{2}|21\d{2})\b", str(text or ""))
 
 
+def _web_query_keywords(text: str) -> set[str]:
+    raw = str(text or "").lower()
+    tokens = set(re.findall(r"[a-z0-9\u00e4\u00f6\u00fc\u00df-]+", raw))
+    stop = {
+        "wer", "was", "wann", "wo", "wie", "ist", "sind", "der", "die", "das", "den", "dem", "des",
+        "ein", "eine", "einer", "einem", "einen", "und", "oder", "mit", "von", "im", "in", "am", "an",
+        "auf", "zu", "zum", "zur", "fuer", "für", "liste", "bitte", "top", "10", "menschen",
+    }
+    keywords = {t for t in tokens if len(t) >= 3 and t not in stop}
+
+    # Semantic expansion for common intents that search backends often miss.
+    if any(k in raw for k in ("schlaust", "intelligen", "iq", "genie")):
+        keywords.update({"iq", "intelligenz", "intelligenzquotient", "hochbegabung", "genie"})
+    if "champions league" in raw:
+        keywords.update({"uefa", "champions", "league"})
+    return keywords
+
+
+def _rewrite_web_query(text: str) -> str:
+    raw = str(text or "").strip()
+    if not raw:
+        return ""
+    low = raw.lower()
+    if any(k in low for k in ("schlaust", "intelligen", "iq", "genie")):
+        return "hoechster iq menschen liste"
+
+    keywords = sorted(_web_query_keywords(raw))
+    return " ".join(keywords[:8]) if keywords else raw
+
+
+def _filter_relevant_web_hits(query: str, hits: list[dict[str, str]], limit: int) -> list[dict[str, str]]:
+    q_keywords = _web_query_keywords(query)
+    if not q_keywords:
+        return hits[:limit]
+
+    scored: list[tuple[int, dict[str, str]]] = []
+    for hit in hits:
+        title = str((hit or {}).get("title") or "")
+        snippet = str((hit or {}).get("snippet") or "")
+        text = f"{title} {snippet}"
+        h_keywords = _web_query_keywords(text)
+        score = len(q_keywords.intersection(h_keywords))
+        scored.append((score, hit))
+
+    scored.sort(key=lambda item: item[0], reverse=True)
+    positives = [item for score, item in scored if score > 0]
+    if positives:
+        return positives[:limit]
+    return hits[: min(limit, 2)]
+
+
 async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
     q = str(query or "").strip()
     if not q:
@@ -318,7 +369,7 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
         return results[:limit]
 
     # Fallback: Wikipedia search + summary (de, then en) improves factual queries.
-    async def wiki_hits(lang: str) -> list[dict[str, str]]:
+    async def wiki_hits(lang: str, term: str) -> list[dict[str, str]]:
         try:
             async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=RAG_WEB_VERIFY_TLS, headers=web_headers) as client:
                 search_resp = await client.get(
@@ -326,7 +377,7 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
                     params={
                         "action": "query",
                         "list": "search",
-                        "srsearch": q,
+                        "srsearch": term,
                         "format": "json",
                         "srlimit": min(limit, 5),
                         "utf8": "1",
@@ -367,7 +418,7 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
     for lang in ("de", "en"):
         if len(results) >= limit:
             break
-        for item in await wiki_hits(lang):
+        for item in await wiki_hits(lang, q):
             key = f"{item.get('title','')}|{item.get('url','')}"
             seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
             if key in seen:
@@ -375,9 +426,6 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
             results.append(item)
             if len(results) >= limit:
                 break
-
-    if len(results) >= limit:
-        return results[:limit]
 
     # Last resort fallback: use curl subprocess (works when service Python TLS stack fails).
     def curl_json(url: str) -> dict[str, Any] | None:
@@ -415,7 +463,59 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
             continue
         results.append({"title": title, "url": page_url, "snippet": snippet})
 
-    return results[:limit]
+    filtered = _filter_relevant_web_hits(q, results, limit)
+    if filtered:
+        # If the current query still yielded low-quality matches, try a rewritten query.
+        max_score = 0
+        q_keywords = _web_query_keywords(q)
+        for item in filtered:
+            t_keywords = _web_query_keywords(f"{item.get('title','')} {item.get('snippet','')}")
+            max_score = max(max_score, len(q_keywords.intersection(t_keywords)))
+
+        if max_score >= 1:
+            return filtered[:limit]
+
+    retry_q = _rewrite_web_query(q)
+    if retry_q and retry_q != q:
+        retry_results = list(results)
+        for lang in ("de", "en"):
+            for item in await wiki_hits(lang, retry_q):
+                key = f"{item.get('title','')}|{item.get('url','')}"
+                seen = {f"{r.get('title','')}|{r.get('url','')}" for r in retry_results}
+                if key in seen:
+                    continue
+                retry_results.append(item)
+                if len(retry_results) >= (limit * 2):
+                    break
+
+        retry_q_enc = quote_plus(retry_q)
+        retry_search_url = (
+            "https://de.wikipedia.org/w/api.php"
+            f"?action=query&list=search&srsearch={retry_q_enc}&format=json&srlimit={min(limit, 5)}&utf8=1"
+        )
+        retry_search_data = curl_json(retry_search_url) or {}
+        retry_entries = ((retry_search_data.get("query") or {}).get("search") or []) if isinstance(retry_search_data, dict) else []
+        for entry in retry_entries:
+            if len(retry_results) >= (limit * 2):
+                break
+            title = str((entry or {}).get("title") or "").strip()
+            if not title:
+                continue
+            sum_url = f"https://de.wikipedia.org/api/rest_v1/page/summary/{quote(title, safe='')}"
+            sum_data = curl_json(sum_url) or {}
+            snippet = str(sum_data.get("extract") or "").strip()
+            page_url = str(((sum_data.get("content_urls") or {}).get("desktop") or {}).get("page") or "").strip()
+            if not snippet:
+                continue
+            key = f"{title}|{page_url}"
+            seen = {f"{r.get('title','')}|{r.get('url','')}" for r in retry_results}
+            if key in seen:
+                continue
+            retry_results.append({"title": title, "url": page_url, "snippet": snippet})
+
+        return _filter_relevant_web_hits(retry_q, retry_results, limit)
+
+    return filtered[:limit]
 
 
 def _read_float(path: str) -> float | None:
@@ -835,6 +935,9 @@ async def answer(
     system_prompt = (
         "Du bist ein Assistent. Nutze nur den gegebenen Kontext. "
         "Wenn die Information nicht aus dem Kontext hervorgeht, sage das klar. "
+        "Bei subjektiven Vergleichsfragen (z. B. 'schlauster Mensch', 'Top 10') "
+        "erklaere stattdessen kurz, dass es keine objektive Rangliste gibt, "
+        "und antworte nuanciert statt nur 'Unklar im Kontext'. "
         "Wenn in der Frage ein konkretes Jahr vorkommt, nenne Gewinner/Fakten nur dann, "
         "wenn genau dieses Jahr im Kontext eindeutig belegt ist; sonst antworte 'Unklar im Kontext'."
     )
@@ -905,6 +1008,21 @@ async def answer(
         answer_years = _years_in_text(answer_text)
         if qy not in answer_years:
             answer_text = f"Unklar im Kontext fuer das Jahr {qy}."
+
+    q_low = str(req.query or "").lower()
+    subjective_markers = ("schlaust", "intelligen", "iq", "top 10", "top10", "liste die 10")
+    if (
+        req.use_web
+        and web_hits
+        and any(marker in q_low for marker in subjective_markers)
+        and "unklar im kontext" in str(answer_text or "").lower()
+    ):
+        answer_text = (
+            "Es gibt keine wissenschaftlich eindeutige, objektive Top-10-Liste der 'schlausten Menschen'. "
+            "Je nach Kriterium (IQ-Tests, wissenschaftliche Leistung, Kreativitaet, Einfluss) entstehen unterschiedliche Rankings. "
+            "Wenn du willst, kann ich dir als naechsten Schritt eine transparente Vergleichsliste nach klaren Kriterien erstellen "
+            "(z. B. nur dokumentierte IQ-Werte mit Quellen)."
+        )
 
     response = {
         "answer": answer_text,

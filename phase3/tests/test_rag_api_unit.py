@@ -52,6 +52,19 @@ class RagApiUnitTests(unittest.TestCase):
         deduped = self.mod._dedupe_local_hits(hits)
         self.assertEqual(2, len(deduped))
 
+    def test_web_query_rewrite_for_intelligence_questions(self):
+        rewritten = self.mod._rewrite_web_query("wer ist der schlauste mensch")
+        self.assertIn("iq", rewritten)
+
+    def test_filter_relevant_web_hits_prefers_matching_entries(self):
+        hits = [
+            {"title": "Die Zauberer vom Waverly Place", "url": "https://de.wikipedia.org/wiki/Die_Zauberer_vom_Waverly_Place", "snippet": "US-Serie"},
+            {"title": "Intelligenzquotient", "url": "https://de.wikipedia.org/wiki/Intelligenzquotient", "snippet": "IQ ist ein Kennwert..."},
+        ]
+        filtered = self.mod._filter_relevant_web_hits("wer ist der schlauste mensch", hits, 5)
+        self.assertTrue(filtered)
+        self.assertEqual("Intelligenzquotient", filtered[0].get("title"))
+
     def test_enforce_project_requires_explicit_project_for_multi_project_user(self):
         with self.assertRaises(self.mod.HTTPException) as err:
             self.mod._enforce_project("alice", None)
@@ -143,6 +156,31 @@ class RagApiUnitTests(unittest.TestCase):
                 )
         self.assertEqual(200, r.status_code)
         self.assertIn("Unklar im Kontext fuer das Jahr 2026.", r.json().get("answer", ""))
+
+    def test_subjective_web_query_gets_explanatory_fallback(self):
+        class _UnklarClient(_FakeAsyncClient):
+            async def post(self, *args, **kwargs):
+                payload = {
+                    "choices": [{"message": {"content": "Unklar im Kontext."}}],
+                    "model": "fake-router-model",
+                }
+                return _FakeResponse(payload, status_code=200)
+
+        web_hits = [{"title": "Intelligenzquotient", "url": "https://de.wikipedia.org/wiki/Intelligenzquotient", "snippet": "IQ"}]
+        with patch.object(self.mod.httpx, "AsyncClient", _UnklarClient):
+            with patch.object(self.mod, "_web_search_snippets", AsyncMock(return_value=web_hits)):
+                r = self.client.post(
+                    "/v1/rag/answer",
+                    json={
+                        "query": "wer ist der schlauste mensch. liste die 10 schlausten",
+                        "project": "mim-llm",
+                        "use_web": True,
+                        "web_top_k": 3,
+                    },
+                    headers={"x-user": "reader", "x-role": "reviewer"},
+                )
+        self.assertEqual(200, r.status_code)
+        self.assertIn("keine wissenschaftlich eindeutige", r.json().get("answer", "").lower())
 
 
 if __name__ == "__main__":
