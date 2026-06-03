@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anleitung - LLM Control Deck</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+      --ok: #2f7a4f;
+      --warn: #8b1e3f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(940px 440px at 100% -20%, #dff1ff, transparent), var(--paper);
+    }
+    main { max-width: 980px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid #0000001f;
+      border-radius: 14px;
+      padding: .95rem;
+      margin-bottom: .9rem;
+      box-shadow: 0 10px 24px #00000010;
+    }
+    h1, h2 { margin-top: 0; }
+    p { line-height: 1.38; }
+    ol, ul { margin-top: .35rem; }
+    li { margin-bottom: .3rem; line-height: 1.34; }
+    .mono {
+      display: inline-block;
+      border: 1px solid #d9dfe8;
+      border-radius: 6px;
+      padding: .08rem .34rem;
+      background: #f5f7fa;
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: .84rem;
+    }
+    .status {
+      display: inline-block;
+      border-radius: 999px;
+      padding: .2rem .55rem;
+      font-size: .78rem;
+      font-weight: 700;
+      border: 1px solid #0000001f;
+      margin-right: .35rem;
+      margin-bottom: .35rem;
+    }
+    .ok { color: var(--ok); border-color: #2f7a4f66; background: #eff8f2; }
+    .warn { color: var(--warn); border-color: #8b1e3f66; background: #fff2f5; }
+    .linkRow {
+      display: flex;
+      gap: .45rem;
+      flex-wrap: wrap;
+      margin-top: .5rem;
+    }
+    .navLink {
+      text-decoration: none;
+      border: 1px solid #0f4e6733;
+      border-radius: 999px;
+      padding: .28rem .6rem;
+      color: #0f4e67;
+      background: #eef7fc;
+      font-size: .82rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Anleitung: LLM Control Deck</h1>
+      <p>Diese Seite fasst den empfohlenen Ablauf zusammen und erklaert typische Statusmeldungen im UI.</p>
+      <div class="linkRow">
+        <a class="navLink" href="index.html" target="_blank" rel="noopener noreferrer">Control Deck</a>
+        <a class="navLink" href="workspaces.html" target="_blank" rel="noopener noreferrer">Workspaces</a>
+        <a class="navLink" href="modelle.html" target="_blank" rel="noopener noreferrer">Modelle</a>
+        <a class="navLink" href="hw-monitor.html" target="_blank" rel="noopener noreferrer">HW Ueberwachung</a>
+        <a class="navLink" href="restart-hilfe.html" target="_blank" rel="noopener noreferrer">Restart Hilfe</a>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>1) Schnellstart</h2>
+      <ol>
+        <li>Login mit User und Rolle ausfuehren (typisch: <span class="mono">clemi / admin</span>).</li>
+        <li>Workspace auswaehlen oder ueber Dateisystem neu anlegen.</li>
+        <li>Projekt und Top-K setzen (z. B. <span class="mono">mim-llm</span> und <span class="mono">5</span>).</li>
+        <li>Bei Modellwechsel auf <strong>Modelle pruefen</strong> klicken.</li>
+        <li>Prompt senden und Quellen/Transparenz rechts kontrollieren.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>2) Modellstatus richtig lesen</h2>
+      <p><span class="status ok">NUTZBAR</span> Modell antwortet innerhalb der Live-Pruefung.</p>
+      <p><span class="status warn">NICHT NUTZBAR</span> Modell war nicht erreichbar oder hat keinen gueltigen Response geliefert.</p>
+      <ul>
+        <li>Bei nicht nutzbaren Modellen zeigt das UI automatisch eine Alternative.</li>
+        <li>Wenn nur Browser-Fetch fehlschlaegt, wird der Grund als Netzwerkproblem ausgewiesen.</li>
+        <li>Router-Endpunkt fuer Modellpruefung: <span class="mono">http://127.0.0.1:4000/v1/chat/completions</span></li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>3) Smoke-Tests und Button-Farben</h2>
+      <ul>
+        <li>Mit <strong>Smoke-Tests ausfuehren</strong> werden Kernfunktionen geprueft.</li>
+        <li>Buttons werden nach dem Lauf markiert: gruen = Test ok, rot = Test fehlgeschlagen.</li>
+        <li>Die Detailergebnisse stehen im Bereich <strong>Smoke-Tests</strong> rechts.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>4) Typische Fehlerbilder</h2>
+      <ul>
+        <li><strong>NetworkError:</strong> Browser kann API/Router nicht erreichen. Pruefe Ports 4000/4100 und lokale Firewall.</li>
+        <li><strong>Model not found:</strong> Modell nicht lokal vorhanden. Pruefe mit <span class="mono">ollama list</span> und ggf. <span class="mono">ollama pull ...</span>.</li>
+        <li><strong>All model attempts failed:</strong> Primaermodell und Fallbacks fehlgeschlagen. Router-Config und Service-Status pruefen.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

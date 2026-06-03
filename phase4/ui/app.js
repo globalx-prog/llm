@@ -69,7 +69,7 @@ const PROJECT_STRUCTURE = {
       children: [
         {
           name: 'ui/',
-          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'workspace-picker.html', 'hilfe-github-tailscale.html', 'ssh-verbindung.html', 'restart-hilfe.html', 'login-prozess.html'],
+          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'anleitung.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'workspace-picker.html', 'hilfe-github-tailscale.html', 'ssh-verbindung.html', 'restart-hilfe.html', 'login-prozess.html'],
         },
       ],
     },

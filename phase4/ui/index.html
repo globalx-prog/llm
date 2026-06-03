@@ -19,6 +19,7 @@
       <a class="topLink" href="hw-monitor.html" target="_blank" rel="noopener noreferrer">HW Ueberwachung</a>
       <a class="topLink" href="rechte-und-user.html" target="_blank" rel="noopener noreferrer">Rechte / User</a>
       <a class="topLink" href="hilfe-github-tailscale.html" target="_blank" rel="noopener noreferrer">GitHub + Tailscale Hilfe</a>
+      <a class="topLink" href="anleitung.html" target="_blank" rel="noopener noreferrer">Anleitung</a>
       <a class="topLink" href="ssh-verbindung.html" target="_blank" rel="noopener noreferrer">SSH Hilfe</a>
       <a class="topLink" href="restart-hilfe.html" target="_blank" rel="noopener noreferrer">Restart Hilfe</a>
       <a class="topLink" href="login-prozess.html" target="_blank" rel="noopener noreferrer">Login Prozess</a>
@@ -109,6 +110,7 @@
           <h3>Modellverfuegbarkeit</h3>
           <button id="checkModelsBtn" class="ghostBtn" type="button">Modelle pruefen</button>
         </div>
+        <p class="fieldHelp">Prueft die Modelle live gegen den Router. Bei Problemen werden automatisch passende Alternativen angezeigt.</p>
         <ul id="modelHealthList" class="healthList"></ul>
       </section>
 
@@ -218,6 +220,7 @@
       <ul id="uiHealthList" class="healthList"></ul>
       <h3>Smoke-Tests</h3>
       <button id="runSmokeTestsBtn" class="ghostBtn" type="button">Smoke-Tests ausfuehren</button>
+      <p class="fieldHelp">Prueft zentrale UI-Funktionen (Buttons, Workspace-Wechsel, Modellcheck, Chat-Basisablauf) und markiert Buttons danach gruen/rot.</p>
       <ul id="smokeTestList" class="healthList"></ul>
       <h3>Audit-Events</h3>
       <ul id="auditList" class="audit"></ul>
