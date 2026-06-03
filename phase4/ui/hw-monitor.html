@@ -111,6 +111,12 @@
     table { width: 100%; border-collapse: collapse; font-size: .85rem; }
     th, td { padding: .38rem .46rem; border-bottom: 1px solid #0000001f; text-align: left; }
     th { font-weight: 700; }
+    .metricSub {
+      margin-top: .2rem;
+      font-size: .78rem;
+      opacity: .8;
+      line-height: 1.25;
+    }
   </style>
 </head>
 <body>
@@ -135,6 +141,33 @@
         <div class="metric"><div class="k">RAM-Temperatur</div><div id="ramTemp" class="v">-</div></div>
         <div class="metric"><div class="k">GPU-Auslastung</div><div id="gpuUtil" class="v">-</div></div>
         <div class="metric"><div class="k">GPU-Temperatur</div><div id="gpuTemp" class="v">-</div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Stromverbrauch Statistik</h2>
+      <p class="small">Werte basieren auf Messpunkten dieser Seite (lokal gespeichert) und werden als trendbasierte Statistik ueber Tage/Wochen berechnet.</p>
+      <div class="grid">
+        <div class="metric">
+          <div class="k">Aktueller Verbrauch</div>
+          <div id="powerNow" class="v">-</div>
+          <div id="powerMethod" class="metricSub">-</div>
+        </div>
+        <div class="metric">
+          <div class="k">Ø pro Tag (letzte 7 Tage)</div>
+          <div id="powerDayAvg" class="v">-</div>
+          <div id="power7dTotal" class="metricSub">-</div>
+        </div>
+        <div class="metric">
+          <div class="k">Ø pro Woche (letzte 4 Wochen)</div>
+          <div id="powerWeekAvg" class="v">-</div>
+          <div id="power28dTotal" class="metricSub">-</div>
+        </div>
+        <div class="metric">
+          <div class="k">Datenabdeckung</div>
+          <div id="powerCoverage" class="v">-</div>
+          <div id="powerWindow" class="metricSub">-</div>
+        </div>
       </div>
     </section>
 
@@ -174,6 +207,160 @@
 
     function fmtTemp(value) {
       return Number.isFinite(value) ? `${value.toFixed(1)} °C` : 'n/a';
+    }
+
+    function fmtW(value) {
+      return Number.isFinite(value) ? `${value.toFixed(1)} W` : 'n/a';
+    }
+
+    function fmtKwh(value) {
+      return Number.isFinite(value) ? `${value.toFixed(2)} kWh` : 'n/a';
+    }
+
+    function safeNumber(value) {
+      return Number.isFinite(Number(value)) ? Number(value) : null;
+    }
+
+    const POWER_HISTORY_KEY = 'llm-hw-power-history-v1';
+    const POWER_RETENTION_MS = 35 * 24 * 60 * 60 * 1000;
+    const POWER_MIN_SAMPLE_GAP_MS = 60 * 1000;
+
+    function loadPowerHistory() {
+      try {
+        const raw = localStorage.getItem(POWER_HISTORY_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        const now = Date.now();
+        return parsed
+          .filter((entry) => Number.isFinite(entry?.ts) && Number.isFinite(entry?.w) && entry.ts <= now)
+          .filter((entry) => now - entry.ts <= POWER_RETENTION_MS)
+          .sort((a, b) => a.ts - b.ts);
+      } catch {
+        return [];
+      }
+    }
+
+    function savePowerHistory(items) {
+      try {
+        localStorage.setItem(POWER_HISTORY_KEY, JSON.stringify(items));
+      } catch {
+      }
+    }
+
+    function addPowerSample(ts, powerW) {
+      if (!Number.isFinite(ts) || !Number.isFinite(powerW)) return [];
+      const now = Date.now();
+      const cutoff = now - POWER_RETENTION_MS;
+      const history = loadPowerHistory().filter((entry) => entry.ts >= cutoff);
+      const last = history[history.length - 1];
+      if (!last) {
+        history.push({ ts, w: powerW });
+      } else if (ts - last.ts >= POWER_MIN_SAMPLE_GAP_MS) {
+        history.push({ ts, w: powerW });
+      } else {
+        history[history.length - 1] = { ts, w: powerW };
+      }
+      savePowerHistory(history);
+      return history;
+    }
+
+    function integrateEnergyWh(samples, startMs, endMs) {
+      if (!Array.isArray(samples) || samples.length < 2 || startMs >= endMs) {
+        return { wh: 0, coveredMs: 0 };
+      }
+
+      let wh = 0;
+      let coveredMs = 0;
+      for (let i = 1; i < samples.length; i += 1) {
+        const left = samples[i - 1];
+        const right = samples[i];
+        const segStart = Math.max(startMs, left.ts);
+        const segEnd = Math.min(endMs, right.ts);
+        if (segEnd <= segStart) continue;
+
+        const avgPowerW = (left.w + right.w) / 2;
+        const hours = (segEnd - segStart) / (1000 * 60 * 60);
+        wh += avgPowerW * hours;
+        coveredMs += segEnd - segStart;
+      }
+
+      return { wh, coveredMs };
+    }
+
+    function buildPowerSnapshot(cpu, ram, gpus) {
+      const cpuUtil = safeNumber(cpu?.utilization_percent) ?? 0;
+      const ramUtil = safeNumber(ram?.utilization_percent) ?? 0;
+
+      const cpuMeasuredW = safeNumber(cpu?.package_power_w);
+      const cpuEstimatedW = 20 + (cpuUtil * 0.9);
+      const cpuW = cpuMeasuredW ?? cpuEstimatedW;
+
+      const ramW = 8 + (ramUtil * 0.08);
+
+      let gpuW = 0;
+      let gpuHasMeasured = false;
+      let gpuHasEstimated = false;
+      (gpus || []).forEach((gpu) => {
+        const measured = safeNumber(gpu?.power_w);
+        if (measured !== null) {
+          gpuHasMeasured = true;
+          gpuW += measured;
+          return;
+        }
+        const util = safeNumber(gpu?.utilization_percent);
+        if (util !== null) {
+          gpuHasEstimated = true;
+          gpuW += 15 + (util * 2.0);
+        }
+      });
+
+      const usesMeasured = cpuMeasuredW !== null || gpuHasMeasured;
+      const usesEstimated = cpuMeasuredW === null || gpuHasEstimated || !gpuHasMeasured;
+      let method = 'Geschaetzt aus CPU/RAM/GPU Last';
+      if (usesMeasured && !usesEstimated) {
+        method = 'Gemessen';
+      } else if (usesMeasured && usesEstimated) {
+        method = 'Gemessen + geschaetzt';
+      }
+
+      return {
+        totalW: cpuW + ramW + gpuW,
+        method,
+      };
+    }
+
+    function renderPowerStats(snapshot, history) {
+      const now = Date.now();
+      const window7 = 7 * 24 * 60 * 60 * 1000;
+      const window28 = 28 * 24 * 60 * 60 * 1000;
+
+      const s7 = integrateEnergyWh(history, now - window7, now);
+      const s28 = integrateEnergyWh(history, now - window28, now);
+
+      const total7Kwh = s7.wh / 1000;
+      const total28Kwh = s28.wh / 1000;
+      const avgDay7Kwh = total7Kwh / 7;
+      const avgWeek4Kwh = total28Kwh / 4;
+
+      const coverage7Pct = Math.min(100, (s7.coveredMs / window7) * 100);
+      const coverage28Pct = Math.min(100, (s28.coveredMs / window28) * 100);
+
+      const firstSampleTs = history.length ? history[0].ts : null;
+
+      setText('powerNow', fmtW(snapshot.totalW));
+      setText('powerMethod', `Methode: ${snapshot.method}`);
+      setText('powerDayAvg', fmtKwh(avgDay7Kwh));
+      setText('power7dTotal', `7 Tage gesamt: ${fmtKwh(total7Kwh)}`);
+      setText('powerWeekAvg', fmtKwh(avgWeek4Kwh));
+      setText('power28dTotal', `4 Wochen gesamt: ${fmtKwh(total28Kwh)}`);
+      setText('powerCoverage', `${coverage7Pct.toFixed(0)}% / ${coverage28Pct.toFixed(0)}%`);
+      setText(
+        'powerWindow',
+        firstSampleTs
+          ? `Messreihe seit: ${new Date(firstSampleTs).toLocaleString('de-DE')} (7d / 28d)`
+          : 'Noch keine Messreihe vorhanden'
+      );
     }
 
     const warnedComponents = new Set();
@@ -300,8 +487,12 @@
         setText('gpuUtil', fmtPct(firstGpu.utilization_percent));
         setText('gpuTemp', fmtTemp(firstGpu.temperature_c));
 
+        const powerSnapshot = buildPowerSnapshot(cpu, ram, gpus);
+        const history = addPowerSample(Date.now(), powerSnapshot.totalW);
+
         renderCpuCores(cpu.cores || []);
         renderGpus(gpus);
+        renderPowerStats(powerSnapshot, history);
         updateGpuHint(gpus, probe);
         maybeWarnHighUsage(cpu, ram, gpus);
       } catch {
@@ -313,6 +504,14 @@
         setText('ramTemp', 'n/a');
         setText('gpuUtil', 'n/a');
         setText('gpuTemp', 'n/a');
+        setText('powerNow', 'n/a');
+        setText('powerMethod', 'Methode: n/a');
+        setText('powerDayAvg', 'n/a');
+        setText('power7dTotal', '7 Tage gesamt: n/a');
+        setText('powerWeekAvg', 'n/a');
+        setText('power28dTotal', '4 Wochen gesamt: n/a');
+        setText('powerCoverage', 'n/a');
+        setText('powerWindow', 'n/a');
         renderCpuCores([]);
         renderGpus([]);
         updateGpuHint([], {});

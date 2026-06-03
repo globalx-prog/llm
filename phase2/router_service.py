@@ -299,7 +299,9 @@ async def chat(
                     continue
                 attempted.append(fb)
                 try:
-                    fb_payload, fb_status = await _forward(str(MODELS[fb]["api_base"]), body)
+                    fb_body = dict(body)
+                    fb_body["model"] = str(MODELS[fb].get("backend_model") or fb)
+                    fb_payload, fb_status = await _forward(str(MODELS[fb]["api_base"]), fb_body)
                     if _is_upstream_failure(fb_payload, fb_status):
                         continue
                     elapsed_ms = int((time.perf_counter() - started) * 1000)
