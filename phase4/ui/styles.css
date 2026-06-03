@@ -496,6 +496,16 @@ input:focus, select:focus, textarea:focus {
 }
 .sources, .audit { margin: 0; padding-left: 1rem; max-height: 180px; overflow: auto; }
 .sources li, .audit li { margin-bottom: .45rem; font-size: .88rem; }
+.sources li.sourceStrategyBadge {
+  list-style: none;
+  margin-left: -1rem;
+  padding: .28rem .48rem;
+  border-radius: 7px;
+  border: 1px solid #0d4b6240;
+  background: #eef8fb;
+  color: #0d4b62;
+  font-size: .8rem;
+}
 .healthList {
   margin: .4rem 0 .8rem;
   padding-left: 1rem;

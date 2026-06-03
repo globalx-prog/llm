@@ -1317,6 +1317,7 @@ function defaultChat(title = null) {
       selectedFsPath: null,
       contextFiles: [],
       lastSources: [],
+      lastSourceStrategy: '',
       lastAnswer: '',
     },
   };
@@ -1365,6 +1366,7 @@ function loadChats() {
             selectedFsPath: chat?.stash?.selectedFsPath || null,
             contextFiles: Array.isArray(chat?.stash?.contextFiles) ? chat.stash.contextFiles.slice(0, 30) : [],
             lastSources: Array.isArray(chat?.stash?.lastSources) ? chat.stash.lastSources.slice(0, 25) : [],
+            lastSourceStrategy: String(chat?.stash?.lastSourceStrategy || ''),
             lastAnswer: chat?.stash?.lastAnswer || '',
           },
         };
@@ -1412,9 +1414,18 @@ function renderChatSessions() {
     });
 }
 
-function renderSources(sources) {
+function renderSources(sources, strategy = '') {
   const ul = el('sourcesList');
   ul.innerHTML = '';
+
+  if (strategy) {
+    const lead = document.createElement('li');
+    const tag = strategy === 'web_first' ? 'web_first (Internet priorisiert)' : strategy;
+    lead.className = 'sourceStrategyBadge';
+    lead.textContent = `Strategie: ${tag}`;
+    ul.appendChild(lead);
+  }
+
   (sources || []).forEach((s) => {
     const li = document.createElement('li');
     li.textContent = `${s.project || '-'} | ${s.title || '-'} | ${s.path || '-'}`;
@@ -1590,7 +1601,7 @@ function renderMessages() {
 
   renderActiveChatHistory();
   renderContextFiles();
-  renderSources(chat.stash.lastSources || []);
+  renderSources(chat.stash.lastSources || [], chat.stash.lastSourceStrategy || '');
 }
 
 function updateChatStashFromInputs() {
@@ -1678,6 +1689,7 @@ function clearActiveChat() {
   if (!chat) return;
   chat.messages = [];
   chat.stash.lastSources = [];
+  chat.stash.lastSourceStrategy = '';
   chat.stash.lastAnswer = '';
   chat.stash.contextFiles = [];
   chat.updatedAt = new Date().toISOString();
@@ -2142,13 +2154,14 @@ el('sendBtn').addEventListener('click', async () => {
 
     if (chat) {
       chat.stash.lastSources = Array.isArray(data.sources) ? data.sources.slice(0, 25) : [];
+      chat.stash.lastSourceStrategy = String(data.source_strategy || '');
       chat.stash.lastAnswer = answer;
       chat.updatedAt = new Date().toISOString();
       saveChats();
       trackWorkspaceExecution(chat);
     }
 
-    renderSources(data.sources || []);
+    renderSources(data.sources || [], String(data.source_strategy || ''));
 
     if (data.low_confidence) {
       setStatus('Niedrige Konfidenz: keine passenden Quellen.');
