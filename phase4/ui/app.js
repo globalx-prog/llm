@@ -2154,7 +2154,8 @@ el('sendBtn').addEventListener('click', async () => {
       setStatus('Niedrige Konfidenz: keine passenden Quellen.');
       addAudit('low_confidence', query);
     } else {
-      setStatus('Antwort erhalten. Quellen aktualisiert.');
+      const webHint = data.web_used ? ` | Web-Treffer: ${Number(data.web_hits || 0)}` : ' | Web: aus';
+      setStatus(`Antwort erhalten. Quellen aktualisiert.${webHint}`);
       addAudit('answer', `model=${model}, mode=${agentMode}, sources=${(data.sources || []).length}`);
     }
   } catch (err) {

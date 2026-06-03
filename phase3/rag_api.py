@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote, quote_plus
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException
@@ -19,6 +20,7 @@ ROUTER_BASE = os.getenv("ROUTER_BASE", "http://127.0.0.1:4000")
 ROUTER_KEY = os.getenv("ROUTER_KEY", "change_me_phase2")
 RAG_ROUTER_TIMEOUT_S = float(os.getenv("RAG_ROUTER_TIMEOUT_S", "130"))
 USER_REGISTRY_PATH = os.getenv("USER_REGISTRY_PATH", "/data/rag/user_registry.json")
+RAG_WEB_VERIFY_TLS = str(os.getenv("RAG_WEB_VERIFY_TLS", "false")).strip().lower() in {"1", "true", "yes", "on"}
 FS_WRITE_ROOTS = [
     p.strip()
     for p in os.getenv("RAG_FS_WRITE_ROOTS", "/mnt/nas/knowledge:/home/clemi/projekte").split(":")
@@ -197,8 +199,13 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
         "skip_disambig": "1",
     }
 
+    web_headers = {
+        "User-Agent": "LLM-RAG/1.0 (+local)",
+        "Accept": "application/json,text/plain,*/*",
+    }
+
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=RAG_WEB_VERIFY_TLS, headers=web_headers) as client:
             r = await client.get(url, params=params)
             if r.status_code != 200:
                 return []
@@ -242,6 +249,108 @@ async def _web_search_snippets(query: str, top_k: int) -> list[dict[str, str]]:
                 )
 
     add_related(data.get("RelatedTopics") or [])
+
+    if len(results) >= limit:
+        return results[:limit]
+
+    # Fallback: Wikipedia search + summary (de, then en) improves factual queries.
+    async def wiki_hits(lang: str) -> list[dict[str, str]]:
+        try:
+            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=RAG_WEB_VERIFY_TLS, headers=web_headers) as client:
+                search_resp = await client.get(
+                    f"https://{lang}.wikipedia.org/w/api.php",
+                    params={
+                        "action": "query",
+                        "list": "search",
+                        "srsearch": q,
+                        "format": "json",
+                        "srlimit": min(limit, 5),
+                        "utf8": "1",
+                    },
+                )
+                if search_resp.status_code != 200:
+                    return []
+                search_data = search_resp.json() if search_resp.text else {}
+                entries = (search_data.get("query", {}) or {}).get("search", []) or []
+
+                wiki_results: list[dict[str, str]] = []
+                for entry in entries:
+                    title = str((entry or {}).get("title") or "").strip()
+                    if not title:
+                        continue
+                    summary_resp = await client.get(
+                        f"https://{lang}.wikipedia.org/api/rest_v1/page/summary/{quote(title, safe='')}"
+                    )
+                    if summary_resp.status_code != 200:
+                        continue
+                    summary_data = summary_resp.json() if summary_resp.text else {}
+                    snippet = str(summary_data.get("extract") or "").strip()
+                    page_url = str(((summary_data.get("content_urls") or {}).get("desktop") or {}).get("page") or "").strip()
+                    if snippet:
+                        wiki_results.append(
+                            {
+                                "title": title,
+                                "url": page_url,
+                                "snippet": snippet,
+                            }
+                        )
+                    if len(wiki_results) >= limit:
+                        break
+                return wiki_results
+        except Exception:
+            return []
+
+    for lang in ("de", "en"):
+        if len(results) >= limit:
+            break
+        for item in await wiki_hits(lang):
+            key = f"{item.get('title','')}|{item.get('url','')}"
+            seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
+            if key in seen:
+                continue
+            results.append(item)
+            if len(results) >= limit:
+                break
+
+    if len(results) >= limit:
+        return results[:limit]
+
+    # Last resort fallback: use curl subprocess (works when service Python TLS stack fails).
+    def curl_json(url: str) -> dict[str, Any] | None:
+        if not shutil.which("curl"):
+            return None
+        try:
+            raw = subprocess.check_output(["curl", "-sS", url], text=True, timeout=10)
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            return None
+
+    q_enc = quote_plus(q)
+    search_url = (
+        "https://de.wikipedia.org/w/api.php"
+        f"?action=query&list=search&srsearch={q_enc}&format=json&srlimit={min(limit, 5)}&utf8=1"
+    )
+    search_data = curl_json(search_url) or {}
+    entries = ((search_data.get("query") or {}).get("search") or []) if isinstance(search_data, dict) else []
+    for entry in entries:
+        if len(results) >= limit:
+            break
+        title = str((entry or {}).get("title") or "").strip()
+        if not title:
+            continue
+        sum_url = f"https://de.wikipedia.org/api/rest_v1/page/summary/{quote(title, safe='')}"
+        sum_data = curl_json(sum_url) or {}
+        snippet = str(sum_data.get("extract") or "").strip()
+        page_url = str(((sum_data.get("content_urls") or {}).get("desktop") or {}).get("page") or "").strip()
+        if not snippet:
+            continue
+        key = f"{title}|{page_url}"
+        seen = {f"{r.get('title','')}|{r.get('url','')}" for r in results}
+        if key in seen:
+            continue
+        results.append({"title": title, "url": page_url, "snippet": snippet})
+
     return results[:limit]
 
 
@@ -634,6 +743,8 @@ async def answer(
             "answer": "Keine passenden Quellen gefunden.",
             "sources": [],
             "retrieval": retrieval,
+            "web_used": bool(req.use_web),
+            "web_hits": len(web_hits),
             "low_confidence": True,
         }
 
