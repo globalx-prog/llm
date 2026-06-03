@@ -75,6 +75,17 @@
     .active {
       background: #eef8ff;
     }
+    .rowBtn {
+      border: 0;
+      border-radius: 8px;
+      background: #0f4e67;
+      color: white;
+      padding: .32rem .5rem;
+      width: auto;
+      cursor: pointer;
+      font-size: .78rem;
+    }
+    tbody tr { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -102,6 +113,7 @@
       <table>
         <thead>
           <tr>
+            <th>Aktion</th>
             <th>Name</th>
             <th>Pfad</th>
             <th>Letzte Nutzung</th>
@@ -234,7 +246,7 @@
 
       if (!workspaces.length) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="4">Noch keine Workspaces angelegt.</td>';
+        tr.innerHTML = '<td colspan="5">Noch keine Workspaces angelegt.</td>';
         rows.appendChild(tr);
         return;
       }
@@ -247,12 +259,35 @@
           tr.className = 'active';
         }
         tr.innerHTML = `
+          <td><button type="button" class="rowBtn" data-activate-id="${ws.id}">Aktivieren</button></td>
           <td>${ws.name || '-'}</td>
           <td class="mono">${ws.path || '-'}</td>
           <td>${fmtTs(ws.lastUsedAt)}</td>
           <td>${chats.length ? `<ul class="sublist">${chatLines}</ul>` : '-'}</td>
         `;
+        tr.addEventListener('click', (ev) => {
+          if (ev.target && ev.target.matches('button[data-activate-id]')) return;
+          setActiveWorkspaceId(ws.id);
+          ws.lastUsedAt = new Date().toISOString();
+          saveWorkspaces(workspaces);
+          render();
+        });
         rows.appendChild(tr);
+      });
+
+      rows.querySelectorAll('button[data-activate-id]').forEach((btn) => {
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const id = btn.getAttribute('data-activate-id') || '';
+          if (!id) return;
+          setActiveWorkspaceId(id);
+          const ws = workspaces.find((item) => String(item.id) === String(id));
+          if (ws) {
+            ws.lastUsedAt = new Date().toISOString();
+            saveWorkspaces(workspaces);
+          }
+          render();
+        });
       });
     }
 
@@ -266,8 +301,9 @@
       if (existing) {
         existing.name = name;
         existing.lastUsedAt = new Date().toISOString();
+        setActiveWorkspaceId(existing.id);
       } else {
-        workspaces.unshift({
+        const created = {
           id: `ws-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
           name,
           path,
@@ -275,7 +311,9 @@
           lastUsedAt: new Date().toISOString(),
           projectHint: 'mim-llm',
           executedChats: [],
-        });
+        };
+        workspaces.unshift(created);
+        setActiveWorkspaceId(created.id);
       }
       saveWorkspaces(workspaces);
       document.getElementById('newWsName').value = '';

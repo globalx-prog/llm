@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSH Verbindung - Hilfe</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(900px 420px at 100% -10%, #dff0ff, transparent), var(--paper);
+    }
+    main { max-width: 980px; margin: 0 auto; padding: 1rem; }
+    .card {
+      background: var(--panel);
+      border: 1px solid #00000020;
+      border-radius: 14px;
+      padding: .9rem;
+      margin-bottom: .85rem;
+      box-shadow: 0 10px 24px #00000011;
+    }
+    code {
+      background: #eef6fb;
+      border: 1px solid #0f4e6730;
+      border-radius: 6px;
+      padding: .08rem .28rem;
+      font-family: "IBM Plex Mono", Consolas, monospace;
+    }
+    pre {
+      margin: .55rem 0;
+      background: #f2f8fc;
+      border: 1px solid #0f4e6730;
+      border-radius: 10px;
+      padding: .65rem .75rem;
+      overflow: auto;
+    }
+    .hint {
+      border-left: 4px solid var(--accent);
+      background: #f4fbff;
+      padding: .55rem .65rem;
+      border-radius: 8px;
+      font-size: .86rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Wie funktioniert eine SSH-Verbindung?</h1>
+      <p>SSH verbindet dich sicher mit einem Linux-Host ueber die Shell. Typisch ist Login per SSH-Key statt Passwort.</p>
+      <pre><code>ssh user@server-ip</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>1) SSH-Key erzeugen (Client)</h2>
+      <pre><code>ssh-keygen -t ed25519 -C "dein-name@llm"
+# Default-Pfad bestaetigen: ~/.ssh/id_ed25519</code></pre>
+
+      <h2>2) Public Key auf Server kopieren</h2>
+      <pre><code>ssh-copy-id user@server-ip
+# alternativ: Inhalt von ~/.ssh/id_ed25519.pub in ~/.ssh/authorized_keys eintragen</code></pre>
+
+      <h2>3) Testen</h2>
+      <pre><code>ssh user@server-ip</code></pre>
+    </section>
+
+    <section class="card">
+      <h2>Harter Basisschutz (Server)</h2>
+      <ul>
+        <li>In <code>/etc/ssh/sshd_config</code> Key-Login aktiv lassen.</li>
+        <li><code>PasswordAuthentication no</code> setzen (wenn Key funktioniert).</li>
+        <li><code>PermitRootLogin no</code> setzen.</li>
+        <li>SSH nur ueber VPN/Tailscale erlauben, wenn moeglich.</li>
+      </ul>
+      <pre><code>sudo systemctl restart ssh</code></pre>
+      <div class="hint">Hinweis: Nach Aenderungen immer eine zweite SSH-Session offen lassen, damit du dich nicht aussperrst.</div>
+    </section>
+
+    <section class="card">
+      <h2>Praktische Befehle</h2>
+      <pre><code># Port und Auth-Details anzeigen
+ssh -v user@server-ip
+
+# bestimmten Key nutzen
+ssh -i ~/.ssh/id_ed25519 user@server-ip
+
+# custom Port
+ssh -p 2222 user@server-ip</code></pre>
+    </section>
+  </main>
+</body>
+</html>

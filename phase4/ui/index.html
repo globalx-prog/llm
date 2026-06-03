@@ -19,6 +19,7 @@
       <a class="topLink" href="hw-monitor.html" target="_blank" rel="noopener noreferrer">HW Ueberwachung</a>
       <a class="topLink" href="rechte-und-user.html" target="_blank" rel="noopener noreferrer">Rechte / User</a>
       <a class="topLink" href="hilfe-github-tailscale.html" target="_blank" rel="noopener noreferrer">GitHub + Tailscale Hilfe</a>
+      <a class="topLink" href="ssh-verbindung.html" target="_blank" rel="noopener noreferrer">SSH Hilfe</a>
       <a class="topLink" href="login-prozess.html" target="_blank" rel="noopener noreferrer">Login Prozess</a>
       <div id="sessionBadge" class="badge">Nicht eingeloggt</div>
     </div>
@@ -168,6 +169,10 @@
           <button id="addLocalFilesBtn" class="ghostBtn" type="button">Einzeldateien hinzufuegen</button>
           <button id="clearContextFilesBtn" class="ghostBtn" type="button">Kontextdateien leeren</button>
         </div>
+        <label>Dateipfad manuell hinzufuegen
+          <input id="manualContextPathInput" placeholder="z. B. phase4/ui/modelle.html" />
+        </label>
+        <button id="addManualContextPathBtn" class="ghostBtn" type="button">Manuellen Dateipfad hinzufuegen</button>
         <input id="contextFileInput" type="file" multiple hidden />
         <div class="contextFilesWrap">
           <h3>Kontextdateien</h3>

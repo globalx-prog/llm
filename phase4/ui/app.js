@@ -50,7 +50,7 @@ const PROJECT_STRUCTURE = {
       children: [
         {
           name: 'ui/',
-          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'hilfe-github-tailscale.html', 'login-prozess.html'],
+          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'hilfe-github-tailscale.html', 'ssh-verbindung.html', 'login-prozess.html'],
         },
       ],
     },
@@ -398,6 +398,22 @@ function activateWorkspaceSession(ws) {
   renderChatSessions();
   switchChat(state.activeChatId);
   renderProjectStructure();
+}
+
+function syncWorkspaceFromStorage() {
+  let storedId = '';
+  try {
+    storedId = localStorage.getItem(ACTIVE_WORKSPACE_KEY) || '';
+  } catch {
+    storedId = '';
+  }
+  if (!storedId || storedId === state.activeWorkspaceId) return;
+
+  const ws = state.workspaces.find((item) => String(item.id) === String(storedId));
+  if (!ws) return;
+  activateWorkspaceSession(ws);
+  addAudit('workspace_sync', ws.id);
+  setStatus(`Workspace synchronisiert: ${ws.name}`);
 }
 
 function updateUserSuggestions() {
@@ -923,15 +939,28 @@ function addSelectedFileToContext() {
     return;
   }
 
-  if (!chat.stash.contextFiles.includes(path)) {
-    chat.stash.contextFiles.push(path);
+  addContextFile(chat, path, 'context_add');
+}
+
+function addContextFile(chat, path, auditType = 'context_add') {
+  const cleaned = String(path || '').trim();
+  if (!chat || !cleaned || cleaned.endsWith('/')) {
+    setStatus('Ungueltiger Dateieintrag fuer den Kontext.', true);
+    return false;
+  }
+
+  if (!chat.stash.contextFiles.includes(cleaned)) {
+    chat.stash.contextFiles.push(cleaned);
     chat.stash.contextFiles = chat.stash.contextFiles.slice(-30);
     chat.updatedAt = new Date().toISOString();
     saveChats();
     renderContextFiles();
-    addAudit('context_add', path);
-    setStatus(`Datei zum Kontext hinzugefuegt: ${path}`);
+    addAudit(auditType, cleaned);
+    setStatus(`Datei zum Kontext hinzugefuegt: ${cleaned}`);
+    return true;
   }
+  setStatus('Datei ist bereits im Kontext.');
+  return false;
 }
 
 function addLocalFilesToContext(fileList) {
@@ -945,18 +974,24 @@ function addLocalFilesToContext(fileList) {
     const rel = String(file.webkitRelativePath || file.name || '').trim();
     if (!rel) return;
     const marker = `lokal:${rel}`;
-    if (!chat.stash.contextFiles.includes(marker)) {
-      chat.stash.contextFiles.push(marker);
+    if (addContextFile(chat, marker, 'context_add_local')) {
       added += 1;
     }
   });
 
-  chat.stash.contextFiles = chat.stash.contextFiles.slice(-30);
-  chat.updatedAt = new Date().toISOString();
-  saveChats();
-  renderContextFiles();
-  addAudit('context_add_local', `${added} dateien`);
+  addAudit('context_add_local_batch', `${added} dateien`);
   setStatus(added ? `${added} lokale Datei(en) zum Kontext hinzugefuegt.` : 'Keine neue Datei hinzugefuegt.');
+}
+
+function addManualContextPath() {
+  const chat = activeChat();
+  const value = (el('manualContextPathInput')?.value || '').trim();
+  if (!chat || !value) {
+    setStatus('Bitte einen Dateipfad eintragen.', true);
+    return;
+  }
+  addContextFile(chat, value, 'context_add_manual');
+  el('manualContextPathInput').value = '';
 }
 
 function clearContextFiles() {
@@ -1085,6 +1120,17 @@ el('workspaceDirInput').addEventListener('change', (ev) => {
 });
 el('newWorkspaceBtn').addEventListener('click', createWorkspaceFromPrompt);
 
+window.addEventListener('storage', (ev) => {
+  if (ev.key === WORKSPACES_KEY) {
+    loadWorkspaces();
+    renderProjectStructure();
+    return;
+  }
+  if (ev.key === ACTIVE_WORKSPACE_KEY) {
+    syncWorkspaceFromStorage();
+  }
+});
+
 el('modelInput').addEventListener('change', () => {
   updateModelInfo();
   updateChatStashFromInputs();
@@ -1142,6 +1188,7 @@ el('contextFileInput').addEventListener('change', (ev) => {
   ev.target.value = '';
 });
 el('clearContextFilesBtn').addEventListener('click', clearContextFiles);
+el('addManualContextPathBtn').addEventListener('click', addManualContextPath);
 
 document.querySelectorAll('.promptChip').forEach((btn) => {
   btn.addEventListener('click', () => {

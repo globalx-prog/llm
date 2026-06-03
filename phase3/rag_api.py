@@ -492,6 +492,20 @@ async def answer(
         )
         data = r.json()
 
+    if r.status_code >= 400:
+        err_obj = data.get("error", {}) if isinstance(data, dict) else {}
+        message = str(err_obj.get("message") or err_obj.get("code") or f"router error status {r.status_code}")
+        if "not found" in message.lower() and req.model:
+            message = f"{message}. Hinweis: Modell {req.model} ist im Router konfiguriert, aber nicht in Ollama installiert (z. B. `ollama pull ...`)."
+        raise HTTPException(status_code=502, detail=message)
+
+    if isinstance(data, dict) and data.get("error"):
+        err_obj = data.get("error", {})
+        message = str(err_obj.get("message") or err_obj.get("code") or "router returned error payload")
+        if "not found" in message.lower() and req.model:
+            message = f"{message}. Hinweis: Modell {req.model} ist nicht lokal verfuegbar."
+        raise HTTPException(status_code=502, detail=message)
+
     answer_text = (
         data.get("choices", [{}])[0]
         .get("message", {})
