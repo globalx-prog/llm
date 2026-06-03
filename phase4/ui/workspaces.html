@@ -170,12 +170,16 @@
     }
 
     function renderCurrentWorkspace(workspaces) {
-      const currentId = activeWorkspaceId();
+      let currentId = activeWorkspaceId();
       const box = document.getElementById('currentWorkspaceBox');
       const list = document.getElementById('currentWorkspaceChats');
       list.innerHTML = '';
 
-      const ws = workspaces.find((item) => String(item.id) === currentId);
+      if (!currentId && workspaces.length) {
+        currentId = String(workspaces[0].id || '');
+      }
+
+      const ws = workspaces.find((item) => String(item.id) === currentId) || workspaces[0] || null;
       if (!ws) {
         box.textContent = 'Kein aktiver Workspace gesetzt.';
         return;

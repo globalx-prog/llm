@@ -330,18 +330,26 @@ function trackWorkspaceExecution(chat) {
 
 async function browseWorkspaceFromFileSystem() {
   if (!window.showDirectoryPicker) {
-    const manualPath = window.prompt('Dateipfad fuer Workspace eingeben', '/home/clemi/projekte/LLM');
-    return (manualPath || '').trim();
+    return (el('workspacePathInput')?.value || '').trim();
   }
 
   try {
     const dir = await window.showDirectoryPicker();
     const pickedName = String(dir?.name || '').trim();
-    const manualPath = window.prompt('Dateipfad fuer den gewaehlten Ordner bestaetigen', pickedName ? `/home/clemi/projekte/${pickedName}` : '/home/clemi/projekte/LLM');
-    return (manualPath || '').trim();
+    const fallbackPath = pickedName ? `/home/clemi/projekte/${pickedName}` : '/home/clemi/projekte/LLM';
+    return (el('workspacePathInput')?.value || '').trim() || fallbackPath;
   } catch {
     return '';
   }
+}
+
+function workspaceDraft(defaultName, defaultPath) {
+  const nameInput = (el('workspaceNameInput')?.value || '').trim();
+  const pathInput = (el('workspacePathInput')?.value || '').trim();
+  return {
+    name: nameInput || defaultName,
+    path: pathInput || defaultPath,
+  };
 }
 
 function createWorkspace(name, path) {
@@ -383,6 +391,8 @@ function activateWorkspaceSession(ws) {
   saveActiveWorkspace();
   currentProjectStructure = loadWorkspaceTree(ws.id);
   state.selectedFsPath = null;
+  if (el('workspaceNameInput')) el('workspaceNameInput').value = ws.name || '';
+  if (el('workspacePathInput')) el('workspacePathInput').value = ws.path || '';
   el('projectInput').value = ws.projectHint || el('projectInput').value || 'mim-llm';
   loadChats();
   renderChatSessions();
@@ -595,6 +605,7 @@ function saveChats() {
 function loadChats() {
   state.chats = {};
   state.activeChatId = null;
+  const currentWorkspaceId = state.activeWorkspaceId || 'ws-default';
 
   try {
     const parsed = JSON.parse(localStorage.getItem(sessionChatStoreKey()) || '{}');
@@ -607,6 +618,8 @@ function loadChats() {
           stash: {
             selectedModel: chat?.stash?.selectedModel || 'gemma2-2b',
             project: chat?.stash?.project || 'mim-llm',
+            workspaceId: chat?.stash?.workspaceId || currentWorkspaceId,
+            workspacePath: chat?.stash?.workspacePath || activeWorkspace()?.path || '/home/clemi/projekte/LLM',
             topK: Number(chat?.stash?.topK || 5),
             agentMode: chat?.stash?.agentMode || 'off',
             selectedFsPath: chat?.stash?.selectedFsPath || null,
@@ -770,12 +783,8 @@ function switchChat(nextChatId) {
   el('projectInput').value = chat.stash.project || 'mim-llm';
   el('topKInput').value = String(chat.stash.topK || 5);
   el('agentModeInput').value = chat.stash.agentMode || 'off';
-  if (chat?.stash?.workspaceId && chat.stash.workspaceId !== state.activeWorkspaceId) {
-    state.activeWorkspaceId = chat.stash.workspaceId;
-    saveActiveWorkspace();
-    currentProjectStructure = loadWorkspaceTree(state.activeWorkspaceId);
-    renderWorkspaceSelect();
-  }
+  chat.stash.workspaceId = state.activeWorkspaceId || chat.stash.workspaceId || 'ws-default';
+  chat.stash.workspacePath = activeWorkspace()?.path || chat.stash.workspacePath || '/home/clemi/projekte/LLM';
   state.selectedFsPath = chat.stash.selectedFsPath || null;
 
   updateModelInfo();
@@ -965,12 +974,12 @@ function loginCurrentUser() {
 async function createWorkspaceFromPicker() {
   const pickedPath = await browseWorkspaceFromFileSystem();
   if (!pickedPath) {
-    setStatus('Workspace-Auswahl abgebrochen.');
+    setStatus('Workspace-Auswahl abgebrochen oder kein Pfad gesetzt.', true);
     return;
   }
   const fallbackName = pickedPath.split('/').filter(Boolean).slice(-1)[0] || 'Workspace';
-  const name = window.prompt('Name fuer den Workspace', fallbackName) || fallbackName;
-  const ws = createWorkspace(name, pickedPath);
+  const draft = workspaceDraft(fallbackName, pickedPath);
+  const ws = createWorkspace(draft.name, draft.path);
   if (!ws) {
     setStatus('Workspace konnte nicht angelegt werden.', true);
     return;
@@ -983,11 +992,14 @@ async function createWorkspaceFromPicker() {
 }
 
 function createWorkspaceFromPrompt() {
-  const path = window.prompt('Dateipfad des neuen Workspace', '/home/clemi/projekte/LLM');
-  if (!path || !path.trim()) return;
-  const fallbackName = path.trim().split('/').filter(Boolean).slice(-1)[0] || 'Workspace';
-  const name = window.prompt('Name fuer den Workspace', fallbackName) || fallbackName;
-  const ws = createWorkspace(name, path.trim());
+  const path = (el('workspacePathInput')?.value || '').trim();
+  const name = (el('workspaceNameInput')?.value || '').trim();
+  if (!path) {
+    setStatus('Bitte Workspace-Pfad setzen.', true);
+    return;
+  }
+  const fallbackName = path.split('/').filter(Boolean).slice(-1)[0] || 'Workspace';
+  const ws = createWorkspace(name || fallbackName, path);
   if (!ws) return;
   currentProjectStructure = loadWorkspaceTree(ws.id);
   activateWorkspaceSession(ws);
@@ -1004,11 +1016,10 @@ function createWorkspaceFromFileList(fileList) {
   }
 
   const rootName = relPaths[0].split('/').filter(Boolean)[0] || 'workspace';
-  const suggestedPath = `/home/clemi/projekte/${rootName}`;
-  const path = window.prompt('Dateipfad fuer diesen Workspace bestaetigen', suggestedPath) || suggestedPath;
-  const name = window.prompt('Name fuer den Workspace', rootName) || rootName;
+  const suggestedPath = (el('workspacePathInput')?.value || '').trim() || `/home/clemi/projekte/${rootName}`;
+  const suggestedName = (el('workspaceNameInput')?.value || '').trim() || rootName;
 
-  const ws = createWorkspace(name, path.trim());
+  const ws = createWorkspace(suggestedName, suggestedPath.trim());
   if (!ws) return;
 
   currentProjectStructure = buildStructureFromFileList(rootName, relPaths);
@@ -1025,6 +1036,8 @@ el('workspaceSelect').addEventListener('change', (ev) => {
   saveActiveWorkspace();
   const ws = activeWorkspace();
   if (ws) {
+    if (el('workspaceNameInput')) el('workspaceNameInput').value = ws.name || '';
+    if (el('workspacePathInput')) el('workspacePathInput').value = ws.path || '';
     ws.lastUsedAt = new Date().toISOString();
     saveWorkspaces();
     if (ws.projectHint) {
@@ -1212,6 +1225,11 @@ el('reindexBtn').addEventListener('click', async () => {
 (async function boot() {
   loadWorkspaces();
   currentProjectStructure = loadWorkspaceTree(state.activeWorkspaceId);
+  const ws = activeWorkspace();
+  if (ws) {
+    if (el('workspaceNameInput')) el('workspaceNameInput').value = ws.name || '';
+    if (el('workspacePathInput')) el('workspacePathInput').value = ws.path || '';
+  }
   loadUsers();
   loadSession();
   loadHistory();
