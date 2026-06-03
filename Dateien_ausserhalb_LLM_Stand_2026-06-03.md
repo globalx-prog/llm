@@ -6,8 +6,7 @@ Dieses Dokument listet die bisher im Rahmen der Umsetzung angelegten oder genutz
 
 ## Systemd-Service-Dateien
 - /etc/systemd/system/llm-web-placeholder.service
-- /etc/systemd/system/llm-model-quality.service
-- /etc/systemd/system/llm-model-fast.service
+- /etc/systemd/system/llm-model-gemma4.service
 - /etc/systemd/system/llm-router.service
 
 ## Konfigurationsdateien

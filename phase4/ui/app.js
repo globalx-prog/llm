@@ -11,28 +11,18 @@ const HISTORY_KEY = 'llm-controldeck-history-v1';
 const CHAT_HISTORY_KEY = 'llm-controldeck-chat-history-v1';
 
 const MODEL_PROFILES = {
-  fast: {
-    css: 'fast',
-    description:
-      'Fast: niedrige Latenz, gut fuer schnelle Iterationen und operative Checks. Backend-Profil fast (Port 8001), geeignet fuer kurze Antworten und hohe Interaktivitaet.',
-  },
-  quality: {
-    css: 'quality',
-    description:
-      'Quality: hoehere Antworttiefe bei mehr Laufzeit. Backend-Profil quality (Port 8000), mit Fallback auf fast bei Problemen. Sinnvoll fuer komplexere Fragen und Zusammenfassungen.',
-  },
   gemma4: {
     css: 'gemma4',
     description:
-      'Gemma 4: analyselastiges Profil fuer tieferes Reasoning mit hoehere Latenz. Backend-Profil gemma4 (Port 8002), Fallback auf quality und fast.',
+      'Gemma 4 (gemma-4, 27B Parameter): analyselastiges Profil fuer tieferes Reasoning mit hoeherer Latenz. Backend-Profil gemma4 (Port 8002).',
   },
 };
 
 function updateModelInfo() {
   const current = el('modelInput').value;
-  const profile = MODEL_PROFILES[current] || MODEL_PROFILES.fast;
+  const profile = MODEL_PROFILES[current] || MODEL_PROFILES.gemma4;
   const box = el('modelInfo');
-  box.classList.remove('fast', 'quality', 'gemma4');
+  box.classList.remove('gemma4');
   box.classList.add(profile.css);
   el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.`;
   el('modelExplainLink').href = `modelle.html#${current}`;

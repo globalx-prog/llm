@@ -38,8 +38,7 @@ sudo ./phase6/install_autostart_stack.sh
 ```
 
 ### Aktivierte Units
-- `llm-model-quality.service`
-- `llm-model-fast.service`
+- `llm-model-gemma4.service`
 - `llm-router.service`
 - `llm-rag-api.service`
 - `llm-ui.service`
@@ -47,8 +46,8 @@ sudo ./phase6/install_autostart_stack.sh
 
 ### Nachpruefen
 ```bash
-systemctl is-enabled llm-model-quality.service llm-model-fast.service llm-router.service llm-rag-api.service llm-ui.service llm-backup-daily.timer
-systemctl is-active llm-model-quality.service llm-model-fast.service llm-router.service llm-rag-api.service llm-ui.service llm-backup-daily.timer
+systemctl is-enabled llm-model-gemma4.service llm-router.service llm-rag-api.service llm-ui.service llm-backup-daily.timer
+systemctl is-active llm-model-gemma4.service llm-router.service llm-rag-api.service llm-ui.service llm-backup-daily.timer
 ```
 
 ## 3) Was bedeutet timer= / wie aeussert sich das?

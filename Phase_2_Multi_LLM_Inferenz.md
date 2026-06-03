@@ -1,19 +1,18 @@
-# Phase 2: Multi-LLM Inferenz
+# Phase 2: Inferenzbetrieb
 
 ## Ziel
-Mehrere Modelle parallel betreiben und ueber einen einheitlichen API-Einstiegspunkt nutzbar machen.
+Ein produktives Modellprofil ueber einen einheitlichen API-Einstiegspunkt nutzbar machen.
 
 ## Umsetzungsstand (2026-06-03)
 - Native Services statt Container umgesetzt.
 - Modell-Endpunkte aktiv:
-  - quality auf `127.0.0.1:8000`
-  - fast auf `127.0.0.1:8001`
+  - gemma4 auf `127.0.0.1:8002`
 - Router-Endpunkt aktiv auf `127.0.0.1:4000` mit OpenAI-kompatiblen Routen:
   - `GET /v1/models`
   - `POST /v1/chat/completions`
 - API-Key-Regel aktiv (`Authorization: Bearer change_me_phase2`).
 - Rollenbasierte Tokenlimits aktiv (`viewer: 800`, `admin: 4000`).
-- Timeout/Fallback aktiv: `quality -> fast`.
+- Single-Model Betrieb aktiv: `gemma4`.
 
 ## Wichtige Abweichung (LiteLLM)
 - LiteLLM konnte in dieser Umgebung nicht stabil installiert werden, da die Abhaengigkeit `orjson` in der aufgeloesten Version auf Python 3.14 nicht baute (PyO3-Versionlimit).
@@ -26,9 +25,8 @@ Mehrere Modelle parallel betreiben und ueber einen einheitlichen API-Einstiegspu
 - Modellspeicher unter /data/models bereitstellen.
 
 2. Modellserver starten
-- Modell A (quality) auf Port 8000.
-- Modell B (fast) auf Port 8001.
-- Optional Ollama fuer Zusatzmodelle.
+- Modellprofil gemma4 auf Port 8002.
+- Optional spaeter weitere Profile ergaenzen.
 
 3. LiteLLM als Router
 - Einheitlicher Endpoint (z. B. /v1).
@@ -41,14 +39,14 @@ Mehrere Modelle parallel betreiben und ueber einen einheitlichen API-Einstiegspu
 
 5. UI-relevante API-Standards
 - Einheitliche Fehlercodes und Fehlermeldungen fuer Frontend-Anzeige.
-- Modellmetadaten (Profil fast/quality, Limits, Verfuegbarkeit) maschinenlesbar bereitstellen.
+- Modellmetadaten (Profil gemma4, Limits, Verfuegbarkeit) maschinenlesbar bereitstellen.
 - Antwortmetadaten fuer UI ausgeben (Latenz, Modellname, Tokenverbrauch).
 
 ## DoD
-- [x] Modell A und B liefern reproduzierbare Antworten.
-- [x] Router schaltet korrekt zwischen Modellen.
+- [x] Modellprofil gemma4 liefert reproduzierbare Antworten.
+- [x] Router routet korrekt auf gemma4.
 - [x] Lasttest mit parallelen Requests bestanden.
-- [x] Fehlerpfade (Timeout/Fallback) funktionieren.
+- [x] Fehlerpfade sind konsistent abgebildet.
 - [x] Frontend kann Fehlermeldungen und Metadaten konsistent darstellen.
 
 ## Checkblatt Phase 2
@@ -68,8 +66,7 @@ Mehrere Modelle parallel betreiben und ueber einen einheitlichen API-Einstiegspu
   - `LLM/phase2/router_service.py`
   - `LLM/phase2/phase2-router-config.yaml`
 - Systemd:
-  - `llm-model-quality.service`
-  - `llm-model-fast.service`
+  - `llm-model-gemma4.service`
   - `llm-router.service`
 
 ## Konkrete Umsetzung (Beispiele)
@@ -85,7 +82,7 @@ sudo apt update && sudo apt -y install k6
 
 1. Modellpfade vorbereiten
 ```bash
-sudo mkdir -p /data/models/quality-model /data/models/fast-model /data/litellm
+sudo mkdir -p /data/models/gemma4-model /data/litellm
 sudo chown -R $USER:$USER /data/models /data/litellm
 ```
 
@@ -93,15 +90,10 @@ sudo chown -R $USER:$USER /data/models /data/litellm
 ```yaml
 # /data/litellm/config.yaml
 model_list:
-  - model_name: fast
+  - model_name: gemma4
     litellm_params:
-      model: openai/fast
-      api_base: http://vllm_fast:8001/v1
-      api_key: dummy
-  - model_name: quality
-    litellm_params:
-      model: openai/quality
-      api_base: http://vllm_quality:8000/v1
+      model: openai/gemma4
+      api_base: http://vllm_gemma4:8002/v1
       api_key: dummy
 general_settings:
   master_key: change_me
@@ -116,7 +108,7 @@ curl -s https://nas-clemens.de/v1/chat/completions \
   -H "Authorization: Bearer change_me" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "fast",
+    "model": "gemma4",
     "messages": [{"role": "user", "content": "Antworte mit ok"}],
     "temperature": 0
   }' | jq .
@@ -130,7 +122,7 @@ import { check } from 'k6';
 export const options = { vus: 10, duration: '1m' };
 export default function () {
   const payload = JSON.stringify({
-    model: 'fast',
+    model: 'gemma4',
     messages: [{ role: 'user', content: 'ping' }]
   });
   const res = http.post('https://nas-clemens.de/v1/chat/completions', payload, {

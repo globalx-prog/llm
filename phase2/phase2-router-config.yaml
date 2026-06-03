@@ -1,18 +1,12 @@
 master_key: change_me_phase2
 models:
-  quality:
-    api_base: http://127.0.0.1:8000/v1
-    profile: quality
-  fast:
-    api_base: http://127.0.0.1:8001/v1
-    profile: fast
   gemma4:
     api_base: http://127.0.0.1:8002/v1
     profile: gemma4
-default_model: fast
-fallbacks:
-  quality: [fast]
-  gemma4: [quality, fast]
+    model_type: gemma-4
+    parameter_count_b: 27
+default_model: gemma4
+fallbacks: {}
 role_token_limits:
   viewer: 800
   admin: 4000

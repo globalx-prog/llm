@@ -1,6 +1,6 @@
 [
   {
-    "query": "kritische Antworten quality",
+    "query": "kritische Antworten gemma4",
     "project": "mim-llm",
     "expected_path_contains": "/mnt/nas/knowledge/mim-llm/handbuch.md"
   },

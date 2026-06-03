@@ -6,8 +6,8 @@ from typing import Any
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-MODEL_ID = os.getenv("MODEL_ID", "quality")
-PROFILE = os.getenv("PROFILE", "quality")
+MODEL_ID = os.getenv("MODEL_ID", "gemma4")
+PROFILE = os.getenv("PROFILE", "gemma4")
 BASE_DELAY_MS = int(os.getenv("BASE_DELAY_MS", "180"))
 
 app = FastAPI(title=f"mock-{MODEL_ID}")
@@ -58,7 +58,7 @@ def chat(req: ChatRequest) -> dict[str, Any]:
     started = time.perf_counter()
     user_last = next((m.content for m in reversed(req.messages) if m.role == "user"), "")
 
-    if "__force_timeout__" in user_last and PROFILE == "quality":
+    if "__force_timeout__" in user_last and PROFILE == "gemma4":
         time.sleep(5)
     else:
         time.sleep(BASE_DELAY_MS / 1000.0)

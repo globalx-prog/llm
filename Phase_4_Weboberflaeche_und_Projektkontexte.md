@@ -6,7 +6,7 @@ Eine zentrale Weboberflaeche mit Login, Rollen und projektbezogenem Zugriff auf 
 ## Umsetzungsstand (2026-06-03)
 - UI-MVP als lauffaehige Weboberflaeche umgesetzt unter `LLM/phase4/ui`.
 - UI ist lokal erreichbar auf `http://127.0.0.1:4173`.
-- Chatfluss integriert mit RAG-Antwortendpoint (`POST /v1/rag/answer`) inkl. Profilwahl `fast/quality`.
+- Chatfluss integriert mit RAG-Antwortendpoint (`POST /v1/rag/answer`) inkl. Modellwahl `gemma4`.
 - Projektkontext und Top-k in UI steuerbar.
 - Quellenanzeige in der UI aktiv (Titel, Pfad, Projekt, Zeitstempel, Chunk-ID).
 - Rollensicht im UI aktiv (`admin-owner`, `service-context`, `review-only`).
@@ -22,7 +22,7 @@ Eine zentrale Weboberflaeche mit Login, Rollen und projektbezogenem Zugriff auf 
 - Projektwahl, Quellen, Agenten-Tasks und Einstellungen.
 
 2. Hauptbereich
-- Chat mit Modellprofilwahl (fast/quality), Kontext-Badges und Quellenanzeige.
+- Chat mit Modellwahl (`gemma4`), Kontext-Badges und Quellenanzeige.
 
 3. Transparenzbereich
 - Rolle, Freigabestatus fuer schreibende Aktionen, Audit-Ereignisse und Jobstatus.
@@ -51,7 +51,7 @@ Eine zentrale Weboberflaeche mit Login, Rollen und projektbezogenem Zugriff auf 
 - [x] MVP-Nutzerfluss ist ohne Mock-Brueche durchgaengig.
 - [x] Login und Rollensteuerung funktionieren.
 - [x] Nutzer sehen nur eigene Projektkontexte.
-- [x] Chat kann fast/quality Modellprofile waehlen.
+- [x] Chat kann das aktive Modellprofil (`gemma4`) waehlen.
 - [x] Quellen sind fuer RAG-Antworten sichtbar.
 - [x] Schreibende Aktionen erzeugen Audit-Eintrag mit Grund/Task-ID.
 - [x] UI ist auf Desktop und mobil funktional.
@@ -97,12 +97,12 @@ export const api = axios.create({
 });
 ```
 
-3. Chat-Request fuer Modellprofil fast/quality
+3. Chat-Request fuer Modellprofil gemma4
 ```ts
 // src/features/chat/sendMessage.ts
 import { api } from '../../lib/api';
 
-export async function sendMessage(model: 'fast' | 'quality', content: string, token: string) {
+export async function sendMessage(model: 'gemma4', content: string, token: string) {
   const res = await api.post(
     '/chat/completions',
     { model, messages: [{ role: 'user', content }] },

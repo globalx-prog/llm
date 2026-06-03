@@ -26,7 +26,7 @@ def _load_config(path: str) -> dict[str, Any]:
 CFG = _load_config(CONFIG_PATH)
 MASTER_KEY = str(CFG.get("master_key", "change_me"))
 MODELS = dict(CFG.get("models", {}))
-DEFAULT_MODEL = str(CFG.get("default_model", "fast"))
+DEFAULT_MODEL = str(CFG.get("default_model", "gemma4"))
 FALLBACKS = dict(CFG.get("fallbacks", {}))
 ROLE_TOKEN_LIMITS = dict(CFG.get("role_token_limits", {"viewer": 800, "admin": 4000}))
 GLOBAL_MAX_TOKENS = int(CFG.get("global_max_tokens", 4096))
@@ -214,6 +214,8 @@ async def models(authorization: str | None = Header(default=None)) -> Any:
                     "id": name,
                     "object": "model",
                     "profile": model_cfg.get("profile", name),
+                    "model_type": model_cfg.get("model_type", "unknown"),
+                    "parameter_count_b": model_cfg.get("parameter_count_b", None),
                     "api_base": api_base,
                     "available": available,
                 }

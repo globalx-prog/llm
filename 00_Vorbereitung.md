@@ -23,7 +23,7 @@ Vorbereitung fuer den Remote-LLM-Dienst mit NAS, RAG, Agenten und zentralem HTTP
 - LiteLLM als einheitlicher API-Router.
 
 3. Inferenz-Schicht:
-- vLLM quality und vLLM fast.
+- Gemma 4 Modellprofil (OpenAI-kompatibler Endpoint).
 - Optional Ollama.
 
 4. RAG-Schicht:

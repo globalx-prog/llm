@@ -9,8 +9,6 @@
       --ink: #102131;
       --paper: #f4f1e7;
       --panel: #fffdf8;
-      --fast: #2b7a62;
-      --quality: #c86a2b;
       --gemma4: #4a5eb8;
     }
     * { box-sizing: border-box; }
@@ -40,8 +38,6 @@
       padding-left: .8rem;
       margin-top: .8rem;
     }
-    .model.fast { border-left-color: var(--fast); }
-    .model.quality { border-left-color: var(--quality); }
     .model.gemma4 { border-left-color: var(--gemma4); }
     .mono {
       display: inline-block;
@@ -58,36 +54,17 @@
 <body>
   <main>
     <section class="card">
-      <h1>Fast vs Quality vs Gemma 4</h1>
-      <p class="sub">Diese Seite beschreibt die aktuell im Stack konfigurierten Modellprofile.</p>
-
-      <article id="fast" class="model fast">
-        <h2>Fast</h2>
-        <p>Optimiert auf niedrige Latenz und schnelle Interaktion. Ideal fuer kurze Rueckfragen, Agenten-Schleifen und UI-nahe Aufgaben.</p>
-        <ul>
-          <li>Backend-Ziel: <span class="mono">127.0.0.1:8001</span></li>
-          <li>Profil: <span class="mono">fast</span></li>
-          <li>Typisch: schnellere Antwort, weniger Tiefe</li>
-        </ul>
-      </article>
-
-      <article id="quality" class="model quality">
-        <h2>Quality</h2>
-        <p>Optimiert auf Antworttiefe und robustere Ergebnisqualitaet bei hoeherer Latenz. Geeignet fuer komplexe Prompts, Zusammenfassungen und Analysen.</p>
-        <ul>
-          <li>Backend-Ziel: <span class="mono">127.0.0.1:8000</span></li>
-          <li>Profil: <span class="mono">quality</span></li>
-          <li>Fallback: <span class="mono">quality -> fast</span> bei Backend-Fehlern</li>
-        </ul>
-      </article>
+      <h1>Gemma 4 Modellprofil</h1>
+      <p class="sub">Diese Seite beschreibt das aktuell im Stack aktivierte Modellprofil.</p>
 
       <article id="gemma4" class="model gemma4">
         <h2>Gemma 4</h2>
-        <p>Analyselastiges Profil fuer tiefere Antworten und strukturierte Ausarbeitung. Im aktuellen Stack als OpenAI-kompatibles Profil `gemma4` integriert.</p>
+        <p>Analyselastiges Profil fuer tiefere Antworten und strukturierte Ausarbeitung. Im aktuellen Stack als OpenAI-kompatibles Profil `gemma4` (Modelltyp `gemma-4`) integriert.</p>
         <ul>
           <li>Backend-Ziel: <span class="mono">127.0.0.1:8002</span></li>
           <li>Profil: <span class="mono">gemma4</span></li>
-          <li>Fallback: <span class="mono">gemma4 -> quality -> fast</span></li>
+          <li>Parameterzahl: <span class="mono">27B</span></li>
+          <li>Fallback: deaktiviert (single-model Betrieb)</li>
         </ul>
       </article>
     </section>

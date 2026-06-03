@@ -100,7 +100,7 @@ sudo rsync -aHAX /pfad/zum/backup/usr_local/ /usr/local/
 
 # 3) Dienste neu laden und starten
 sudo systemctl daemon-reload
-sudo systemctl enable --now llm-router.service llm-rag-api.service llm-model-fast.service llm-model-quality.service
+sudo systemctl enable --now llm-router.service llm-rag-api.service llm-model-gemma4.service
 ```
 
 Ausfuehrbares Skript (sicher mit Check/Dry-Run):

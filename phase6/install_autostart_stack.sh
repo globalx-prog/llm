@@ -21,8 +21,7 @@ sudo systemctl daemon-reload
 
 echo "[5/6] enable+start full llm stack"
 sudo systemctl enable --now \
-  llm-model-quality.service \
-  llm-model-fast.service \
+  llm-model-gemma4.service \
   llm-router.service \
   llm-rag-api.service \
   llm-ui.service \
@@ -30,8 +29,7 @@ sudo systemctl enable --now \
 
 echo "[6/6] status"
 sudo systemctl --no-pager --full status \
-  llm-model-quality.service \
-  llm-model-fast.service \
+  llm-model-gemma4.service \
   llm-router.service \
   llm-rag-api.service \
   llm-ui.service \
