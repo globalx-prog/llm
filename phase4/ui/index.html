@@ -9,7 +9,10 @@
 <body>
   <div class="bg"></div>
   <header class="topbar">
-    <h1>LLM Control Deck</h1>
+    <div>
+      <h1>LLM Control Deck</h1>
+      <p class="subtitle">VPN-ready Projektarbeit mit RAG, Rollensteuerung und Audit</p>
+    </div>
     <div id="sessionBadge" class="badge">Nicht eingeloggt</div>
   </header>
 
@@ -49,14 +52,19 @@
 
     <section class="panel chat">
       <div class="chatHead">
-        <h2>Chat</h2>
+        <h2>Chat Workspace</h2>
         <label>Modell
           <select id="modelInput">
-            <option value="fast">fast</option>
-            <option value="quality">quality</option>
+            <option value="fast">Fast - niedrige Latenz</option>
+            <option value="quality">Quality - bessere Antworttiefe</option>
           </select>
         </label>
       </div>
+
+      <section id="modelInfo" class="modelInfo fast" aria-live="polite">
+        <h3>Modellprofil</h3>
+        <p id="modelDesc"></p>
+      </section>
 
       <div id="messages" class="messages"></div>
 

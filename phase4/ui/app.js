@@ -6,6 +6,46 @@ const state = {
   audit: [],
 };
 
+const MODEL_PROFILES = {
+  fast: {
+    css: 'fast',
+    description:
+      'Fast: niedrige Latenz, gut fuer schnelle Iterationen und operative Checks. Backend-Profil fast (Port 8001), geeignet fuer kurze Antworten und hohe Interaktivitaet.',
+  },
+  quality: {
+    css: 'quality',
+    description:
+      'Quality: hoehere Antworttiefe bei mehr Laufzeit. Backend-Profil quality (Port 8000), mit Fallback auf fast bei Problemen. Sinnvoll fuer komplexere Fragen und Zusammenfassungen.',
+  },
+};
+
+function updateModelInfo() {
+  const current = el('modelInput').value;
+  const profile = MODEL_PROFILES[current] || MODEL_PROFILES.fast;
+  const box = el('modelInfo');
+  box.classList.remove('fast', 'quality');
+  box.classList.add(profile.css);
+  el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.`;
+}
+
+async function requestJson(url, options = {}) {
+  const res = await fetch(url, options);
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const detail =
+      data?.error?.message || data?.detail || `HTTP ${res.status} ${res.statusText || 'request failed'}`;
+    throw new Error(detail);
+  }
+
+  return data || {};
+}
+
 function authHeaders() {
   if (!state.session) return {};
   return {
@@ -51,6 +91,8 @@ el('loginBtn').addEventListener('click', () => {
   setStatus('Eingeloggt. Rollensteuerung aktiv.');
 });
 
+el('modelInput').addEventListener('change', updateModelInfo);
+
 el('sendBtn').addEventListener('click', async () => {
   const query = el('promptInput').value.trim();
   if (!query) return;
@@ -62,12 +104,11 @@ el('sendBtn').addEventListener('click', async () => {
   setStatus('Sende Anfrage...');
 
   try {
-    const res = await fetch(`${API_BASE}/v1/rag/answer`, {
+    const data = await requestJson(`${API_BASE}/v1/rag/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ query, model, project, top_k }),
     });
-    const data = await res.json();
 
     addMessage('bot', data.answer || 'Keine Antwort');
 
@@ -114,7 +155,7 @@ el('reindexBtn').addEventListener('click', async () => {
 
   setStatus('Re-Index laeuft...');
   try {
-    const res = await fetch(`${API_BASE}/v1/rag/ingest`, {
+    const data = await requestJson(`${API_BASE}/v1/rag/ingest`, {
       method: 'POST',
       headers: {
         'X-Reason': reason,
@@ -122,7 +163,6 @@ el('reindexBtn').addEventListener('click', async () => {
         ...authHeaders(),
       },
     });
-    const data = await res.json();
     setStatus(`Re-Index fertig: files=${data.files_ingested}, chunks=${data.chunks_ingested}`);
     addAudit('write_action', `allowed role=${state.session.role}, reason=${reason}, task=${taskId}`);
   } catch (err) {
@@ -132,10 +172,10 @@ el('reindexBtn').addEventListener('click', async () => {
 });
 
 (async function boot() {
+  updateModelInfo();
   setStatus('Pruefe API...');
   try {
-    const h = await fetch(`${API_BASE}/healthz`);
-    const data = await h.json();
+    const data = await requestJson(`${API_BASE}/healthz`);
     setStatus(`API bereit: ${data.service}`);
     addAudit('boot', 'ui initialisiert');
   } catch (err) {
