@@ -69,6 +69,12 @@
 
       <div id="messages" class="messages"></div>
 
+      <div class="promptExamples" aria-label="Beispielprompts">
+        <button class="promptChip" type="button" data-prompt="Fasse die wichtigsten Punkte im Projekt mim-llm in 5 Stichpunkten zusammen.">Projektzusammenfassung</button>
+        <button class="promptChip" type="button" data-prompt="Welche Risiken siehst du im aktuellen Setup und was sollte zuerst gehaertet werden?">Risikoanalyse</button>
+        <button class="promptChip" type="button" data-prompt="Erstelle einen konkreten 3-Schritte-Plan fuer die naechste Umsetzungsetappe.">3-Schritte-Plan</button>
+      </div>
+
       <div class="composer">
         <textarea id="promptInput" rows="4" placeholder="Frage mit Projektkontext stellen..."></textarea>
         <button id="sendBtn">Senden</button>
@@ -84,6 +90,12 @@
         <button id="clearHistoryBtn" class="ghostBtn" type="button">Leeren</button>
       </div>
       <ul id="historyList" class="history"></ul>
+
+      <div class="historyHead">
+        <h3>Chatverlauf</h3>
+        <button id="clearChatHistoryBtn" class="ghostBtn" type="button">Leeren</button>
+      </div>
+      <ul id="chatHistoryList" class="history"></ul>
 
       <h3>Quellen</h3>
       <ul id="sourcesList" class="sources"></ul>

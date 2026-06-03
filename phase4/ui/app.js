@@ -5,8 +5,10 @@ const state = {
   session: null,
   audit: [],
   history: [],
+  chatHistory: [],
 };
 const HISTORY_KEY = 'llm-controldeck-history-v1';
+const CHAT_HISTORY_KEY = 'llm-controldeck-chat-history-v1';
 
 const MODEL_PROFILES = {
   fast: {
@@ -43,9 +45,29 @@ function loadHistory() {
   }
 }
 
+function loadChatHistory() {
+  try {
+    const raw = localStorage.getItem(CHAT_HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) {
+      state.chatHistory = parsed.slice(0, 60);
+    }
+  } catch {
+    state.chatHistory = [];
+  }
+}
+
 function persistHistory() {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history.slice(0, 30)));
+  } catch {
+    // Ignore storage errors (private mode / quota).
+  }
+}
+
+function persistChatHistory() {
+  try {
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(state.chatHistory.slice(0, 60)));
   } catch {
     // Ignore storage errors (private mode / quota).
   }
@@ -68,6 +90,23 @@ function renderHistory() {
   });
 }
 
+function renderChatHistory() {
+  const ul = el('chatHistoryList');
+  ul.innerHTML = '';
+  if (!state.chatHistory.length) {
+    const li = document.createElement('li');
+    li.textContent = 'Noch kein Chatverlauf.';
+    ul.appendChild(li);
+    return;
+  }
+
+  state.chatHistory.forEach((item) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.ts} | ${item.role} | ${item.text}`;
+    ul.appendChild(li);
+  });
+}
+
 function addHistory(query, model, project) {
   const entry = {
     ts: new Date().toISOString().replace('T', ' ').replace('Z', ''),
@@ -79,6 +118,18 @@ function addHistory(query, model, project) {
   state.history = state.history.slice(0, 30);
   persistHistory();
   renderHistory();
+}
+
+function addChatHistory(role, text) {
+  const entry = {
+    ts: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+    role,
+    text,
+  };
+  state.chatHistory.unshift(entry);
+  state.chatHistory = state.chatHistory.slice(0, 60);
+  persistChatHistory();
+  renderChatHistory();
 }
 
 async function requestJson(url, options = {}) {
@@ -120,13 +171,17 @@ function addAudit(type, detail) {
   });
 }
 
-function addMessage(role, text) {
+function addMessage(role, text, persist = true) {
   const box = el('messages');
   const div = document.createElement('div');
   div.className = `msg ${role}`;
   div.textContent = text;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
+
+  if (persist) {
+    addChatHistory(role, text);
+  }
 }
 
 function setStatus(text, warn = false) {
@@ -150,6 +205,22 @@ el('clearHistoryBtn').addEventListener('click', () => {
   persistHistory();
   renderHistory();
   addAudit('history', 'suchverlauf geloescht');
+});
+el('clearChatHistoryBtn').addEventListener('click', () => {
+  state.chatHistory = [];
+  persistChatHistory();
+  renderChatHistory();
+  el('messages').innerHTML = '';
+  addAudit('history', 'chatverlauf geloescht');
+});
+
+document.querySelectorAll('.promptChip').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const prompt = btn.dataset.prompt || '';
+    el('promptInput').value = prompt;
+    el('promptInput').focus();
+    addAudit('prompt_example', prompt.slice(0, 60));
+  });
 });
 
 el('sendBtn').addEventListener('click', async () => {
@@ -233,7 +304,13 @@ el('reindexBtn').addEventListener('click', async () => {
 
 (async function boot() {
   loadHistory();
+  loadChatHistory();
   renderHistory();
+  renderChatHistory();
+  state.chatHistory
+    .slice()
+    .reverse()
+    .forEach((entry) => addMessage(entry.role, entry.text, false));
   updateModelInfo();
   setStatus('Pruefe API...');
   try {
@@ -241,7 +318,7 @@ el('reindexBtn').addEventListener('click', async () => {
     setStatus(`API bereit: ${data.service}`);
     addAudit('boot', 'ui initialisiert');
   } catch (err) {
-    setStatus(`API nicht erreichbar: ${String(err)}`, true);
+    setStatus(`API nicht erreichbar (${API_BASE}). Fehler: ${String(err)}. Hinweis: llm-rag-api auf 0.0.0.0:4100 starten.`, true);
     addAudit('boot_error', String(err));
   }
 })();

@@ -137,6 +137,26 @@ input:focus, select:focus, textarea:focus {
   padding: .7rem;
   background: #fffaf0;
 }
+.promptExamples {
+  margin-top: .7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+.promptChip {
+  width: auto;
+  margin-top: 0;
+  padding: .35rem .58rem;
+  font-size: .78rem;
+  border-radius: 999px;
+  color: #0f4e67;
+  background: #edf7fb;
+  border: 1px solid #0f4e6740;
+}
+.promptChip:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
 .msg { padding: .65rem .75rem; margin-bottom: .6rem; border-radius: 10px; }
 .msg.user { background: #f1e4d2; border-left: 4px solid var(--accent); }
 .msg.bot { background: #ddf0e7; border-left: 4px solid var(--accent-2); }
@@ -163,7 +183,7 @@ input:focus, select:focus, textarea:focus {
 .history {
   margin: .55rem 0 .95rem;
   padding-left: 1rem;
-  max-height: 140px;
+  max-height: 130px;
   overflow: auto;
 }
 .history li {
