@@ -30,6 +30,7 @@ const SESSION_KEY = 'llm-active-session-v1';
 const WORKSPACES_KEY = 'llm-workspaces-v1';
 const ACTIVE_WORKSPACE_KEY = 'llm-active-workspace-v1';
 const WORKSPACE_TREE_PREFIX = 'llm-workspace-tree-v1';
+const WORKSPACE_PICKER_RESULT_KEY = 'llm-workspace-picker-result-v1';
 
 const PROJECT_STRUCTURE = {
   name: 'LLM/',
@@ -56,7 +57,7 @@ const PROJECT_STRUCTURE = {
       children: [
         {
           name: 'ui/',
-          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'hilfe-github-tailscale.html', 'ssh-verbindung.html', 'restart-hilfe.html', 'login-prozess.html'],
+          children: ['index.html', 'app.js', 'styles.css', 'modelle.html', 'beispielprompts.html', 'hw-monitor.html', 'rechte-und-user.html', 'workspaces.html', 'workspace-picker.html', 'hilfe-github-tailscale.html', 'ssh-verbindung.html', 'restart-hilfe.html', 'login-prozess.html'],
         },
       ],
     },
@@ -514,9 +515,13 @@ function loadSession() {
 }
 
 function updateModelInfo() {
+  const box = el('modelInfo');
+  const desc = el('modelDesc');
+  const link = el('modelExplainLink');
+  if (!box || !desc || !link) return;
+
   const current = el('modelInput').value;
   const profile = MODEL_PROFILES[current] || MODEL_PROFILES['gemma2-2b'];
-  const box = el('modelInfo');
   box.classList.remove('gemma2', 'gemma3', 'llama33', 'deepseekr1', 'deepseekcoder', 'mistral7b');
   box.classList.add(profile.css);
   const status = state.modelStatus[current];
@@ -525,9 +530,9 @@ function updateModelInfo() {
     : (status && status.ok === false)
       ? ` Verfuegbarkeit: aktuell nicht nutzbar (${status.reason || 'kein Modell-Response'}).`
       : ' Verfuegbarkeit: noch nicht geprueft.';
-  el('modelDesc').textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.${statusHint}`;
-  el('modelExplainLink').href = `modelle.html#${current}`;
-  el('modelExplainLink').textContent = `Was bedeutet ${profile.label}?`;
+  desc.textContent = `${profile.description} Rollenlimits: viewer=800 Tokens, admin=4000 Tokens.${statusHint}`;
+  link.href = `modelle.html#${current}`;
+  link.textContent = `Was bedeutet ${profile.label}?`;
   setModelInputHealth(current);
 }
 
@@ -715,14 +720,18 @@ async function runSmokeTests() {
   }
 
   try {
-    const oldPicker = window.showDirectoryPicker;
-    window.showDirectoryPicker = async () => ({ name: 'smoke-ws' });
-    el('workspacePathInput').value = '/tmp/smoke-ws';
+    const oldOpen = window.open;
+    window.open = () => {
+      window.setTimeout(() => {
+        applyWorkspacePickerResult(JSON.stringify({ name: 'smoke-ws', path: '/tmp/smoke-ws', ts: Date.now() }));
+      }, 0);
+      return { focus() {} };
+    };
     ensure('browseWorkspaceBtn').click();
-    await wait();
+    await wait(40);
     const exists = state.workspaces.some((ws) => ws.path === '/tmp/smoke-ws');
     push('Workspace Browse legt Workspace an', exists, exists ? '' : 'workspace nicht erstellt', ['browseWorkspaceBtn']);
-    window.showDirectoryPicker = oldPicker;
+    window.open = oldOpen;
   } catch (err) {
     push('Workspace Browse legt Workspace an', false, String(err));
   }
@@ -856,10 +865,12 @@ async function runSmokeTests() {
     el('roleInput').value = 'admin';
     ensure('loginBtn').click();
     await wait();
+    const auditBefore = state.audit.slice();
     ensure('reindexBtn').click();
     await wait(60);
-    const ok = String(el('statusBox').textContent || '').includes('Re-Index fertig');
-    push('Re-Index Button', ok, el('statusBox').textContent || '', ['reindexBtn']);
+    const wroteAction = state.audit.some((entry) => entry.includes('| write_action |') && !auditBefore.includes(entry));
+    const detail = wroteAction ? 'write_action Audit erkannt' : (el('statusBox').textContent || 'kein write_action Audit');
+    push('Re-Index Button', wroteAction, detail, ['reindexBtn']);
   } catch (err) {
     push('Senden/Re-Index', false, String(err), ['sendBtn', 'reindexBtn']);
   } finally {
@@ -1474,6 +1485,45 @@ async function createWorkspaceFromPicker() {
   setStatus(`Workspace aktiv: ${ws.name}`);
 }
 
+function applyWorkspacePickerResult(rawValue) {
+  let payload = null;
+  try {
+    payload = JSON.parse(rawValue || localStorage.getItem(WORKSPACE_PICKER_RESULT_KEY) || 'null');
+  } catch {
+    payload = null;
+  }
+  if (!payload?.path) return false;
+
+  const pickedPath = String(payload.path || '').trim();
+  const pickedName = String(payload.name || '').trim() || pickedPath.split('/').filter(Boolean).slice(-1)[0] || 'Workspace';
+  const ws = createWorkspace(pickedName, pickedPath);
+  if (!ws) return false;
+
+  currentProjectStructure = loadWorkspaceTree(ws.id);
+  activateWorkspaceSession(ws);
+  addAudit('workspace_open_popup', `${ws.name} (${ws.path})`);
+  setStatus(`Workspace ueber Auswahlfenster aktiv: ${ws.name}`);
+
+  try {
+    localStorage.removeItem(WORKSPACE_PICKER_RESULT_KEY);
+  } catch {
+    // ignore storage errors
+  }
+  return true;
+}
+
+function openWorkspacePickerWindow() {
+  const popup = window.open('workspace-picker.html', 'workspacePicker', 'popup=yes,width=760,height=560');
+  if (popup) {
+    popup.focus();
+    setStatus('Workspace-Auswahlfenster geoeffnet.');
+    return;
+  }
+
+  setStatus('Popup blockiert, nutze lokalen Dateisystem-Dialog als Fallback.', true);
+  createWorkspaceFromPicker();
+}
+
 function createWorkspaceFromPrompt() {
   const path = (el('workspacePathInput')?.value || '').trim();
   const name = (el('workspaceNameInput')?.value || '').trim();
@@ -1522,7 +1572,7 @@ el('workspaceSelect').addEventListener('change', (ev) => {
   activateWorkspaceSession(ws);
   addAudit('workspace_switch', ws.id);
 });
-el('browseWorkspaceBtn').addEventListener('click', createWorkspaceFromPicker);
+el('browseWorkspaceBtn').addEventListener('click', openWorkspacePickerWindow);
 el('browseWorkspaceInteractiveBtn').addEventListener('click', () => {
   el('workspaceDirInput').click();
 });
@@ -1540,6 +1590,10 @@ window.addEventListener('storage', (ev) => {
   }
   if (ev.key === ACTIVE_WORKSPACE_KEY) {
     syncWorkspaceFromStorage();
+    return;
+  }
+  if (ev.key === WORKSPACE_PICKER_RESULT_KEY) {
+    applyWorkspacePickerResult(ev.newValue);
   }
 });
 
@@ -1734,6 +1788,7 @@ el('reindexBtn').addEventListener('click', async () => {
   renderUiHealth();
   renderModelHealth();
   updateModelInfo();
+  applyWorkspacePickerResult();
 
   if (state.session?.user) {
     el('sessionBadge').textContent = `${state.session.user} (${state.session.role})`;

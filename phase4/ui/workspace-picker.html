@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workspace Auswahl</title>
+  <style>
+    :root {
+      --ink: #0f1b2b;
+      --paper: #f2efe7;
+      --panel: #fffdf8;
+      --accent: #156a8d;
+      --line: #00000024;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(900px 420px at 20% -10%, #e2f3ff, transparent), var(--paper);
+      padding: 1rem;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 8px 24px #00000014;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 .3rem;
+      font-size: 1.2rem;
+    }
+    p {
+      margin: 0 0 .8rem;
+      opacity: .8;
+      font-size: .92rem;
+    }
+    label {
+      display: block;
+      margin-bottom: .65rem;
+      font-size: .88rem;
+    }
+    input, button {
+      width: 100%;
+      padding: .62rem .7rem;
+      border-radius: 10px;
+      font: inherit;
+    }
+    input {
+      border: 1px solid #00000033;
+      margin-top: .3rem;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .6rem;
+      margin-top: .8rem;
+    }
+    button {
+      border: 0;
+      background: linear-gradient(120deg, var(--accent), #2b8fb1);
+      color: #fff;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #eef7fc;
+      color: #0f4e67;
+      border: 1px solid #0f4e6740;
+    }
+    .status {
+      margin-top: .75rem;
+      font-size: .86rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: .5rem;
+      background: #fff;
+    }
+    @media (max-width: 680px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="panel">
+    <h1>Workspace Auswaehlen</h1>
+    <p>Waehle den neuen Workspace und uebernimm ihn im Hauptfenster.</p>
+
+    <label>Workspace-Name
+      <input id="workspaceName" placeholder="z. B. Kundenprojekt A" />
+    </label>
+
+    <label>Workspace-Pfad
+      <input id="workspacePath" placeholder="z. B. /home/clemi/projekte/LLM" />
+    </label>
+
+    <div class="row">
+      <button id="browseBtn" type="button">Ordner im Dateisystem waehlen</button>
+      <button id="applyBtn" type="button">Workspace uebernehmen</button>
+    </div>
+
+    <div class="row">
+      <button id="cancelBtn" class="secondary" type="button">Schliessen</button>
+    </div>
+
+    <div id="status" class="status">Bereit</div>
+  </main>
+
+  <script>
+    const KEY = 'llm-workspace-picker-result-v1';
+
+    const el = (id) => document.getElementById(id);
+    const setStatus = (text, warn = false) => {
+      const box = el('status');
+      box.textContent = text;
+      box.style.borderColor = warn ? '#8b1e3f66' : '#00000024';
+    };
+
+    async function pickDirectory() {
+      if (!window.showDirectoryPicker) {
+        setStatus('Dateisystem-Picker nicht verfuegbar. Bitte Pfad manuell eintragen.', true);
+        return;
+      }
+      try {
+        const dir = await window.showDirectoryPicker();
+        const name = String(dir?.name || '').trim();
+        if (name && !el('workspaceName').value.trim()) {
+          el('workspaceName').value = name;
+        }
+        if (name && !el('workspacePath').value.trim()) {
+          el('workspacePath').value = `/home/clemi/projekte/${name}`;
+        }
+        setStatus(`Ordner gewaehlt: ${name || '(unbekannt)'}`);
+      } catch {
+        setStatus('Ordnerauswahl abgebrochen.', true);
+      }
+    }
+
+    function applyWorkspace() {
+      const path = String(el('workspacePath').value || '').trim();
+      const name = String(el('workspaceName').value || '').trim();
+      if (!path) {
+        setStatus('Bitte Workspace-Pfad setzen.', true);
+        return;
+      }
+      const payload = {
+        path,
+        name: name || path.split('/').filter(Boolean).slice(-1)[0] || 'Workspace',
+        ts: Date.now(),
+      };
+      try {
+        localStorage.setItem(KEY, JSON.stringify(payload));
+        setStatus('Workspace uebernommen. Fenster wird geschlossen.');
+        window.setTimeout(() => window.close(), 150);
+      } catch (err) {
+        setStatus(`Fehler beim Speichern: ${String(err)}`, true);
+      }
+    }
+
+    el('browseBtn').addEventListener('click', pickDirectory);
+    el('applyBtn').addEventListener('click', applyWorkspace);
+    el('cancelBtn').addEventListener('click', () => window.close());
+  </script>
+</body>
+</html>
