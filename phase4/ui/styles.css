@@ -51,6 +51,25 @@ body {
   border-radius: 999px;
   padding: .45rem .85rem;
 }
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+.topLink {
+  text-decoration: none;
+  border: 1px solid #0f4e6738;
+  border-radius: 999px;
+  padding: .35rem .65rem;
+  font-size: .8rem;
+  color: #0f4e67;
+  background: #eff8fc;
+}
+.topLink.inline {
+  border-radius: 8px;
+  padding: .22rem .45rem;
+}
+.topLink:hover { filter: brightness(1.05); }
 .layout {
   display: grid;
   grid-template-columns: 280px 1fr 290px;
@@ -105,6 +124,51 @@ input:focus, select:focus, textarea:focus {
 
 .hint { font-size: .8rem; opacity: .7; }
 .chatHead { display: flex; align-items: center; justify-content: space-between; gap: .8rem; }
+.chatControlGrid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .6rem;
+  align-items: end;
+}
+.chatSessionTools {
+  display: flex;
+  gap: .45rem;
+}
+.chatSessionTools .ghostBtn {
+  margin: 0;
+}
+.chatSessionsPanel {
+  margin-bottom: .8rem;
+  padding: .55rem .65rem;
+  border: 1px solid #0000001f;
+  border-radius: 10px;
+  background: #fffaf6;
+}
+.chatSessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 120px;
+  overflow: auto;
+}
+.chatSessions li {
+  margin: .3rem 0;
+}
+.chatSessionBtn {
+  width: 100%;
+  text-align: left;
+  margin: 0;
+  padding: .42rem .52rem;
+  border: 1px solid #00000029;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #203646;
+  font-size: .8rem;
+}
+.chatSessionBtn.active {
+  border-color: #0f4e6766;
+  background: #ecf6fb;
+}
 
 .modelInfo {
   border-radius: 10px;
@@ -137,6 +201,10 @@ input:focus, select:focus, textarea:focus {
 .modelLink:hover { filter: brightness(1.1); }
 .modelInfo.gemma2 { border-left-color: #4a5eb8; }
 .modelInfo.gemma3 { border-left-color: #0f7a67; }
+.modelInfo.llama33 { border-left-color: #a8561f; }
+.modelInfo.deepseekr1 { border-left-color: #8a2c6f; }
+.modelInfo.deepseekcoder { border-left-color: #145a8d; }
+.modelInfo.mistral7b { border-left-color: #1f7d4f; }
 
 .workflowGuide {
   margin: 0 auto .9rem;
@@ -184,6 +252,16 @@ input:focus, select:focus, textarea:focus {
   flex-wrap: wrap;
   gap: .45rem;
 }
+.promptExamplesHead {
+  margin-top: .8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+}
+.promptExamplesHead h3 {
+  margin: 0;
+}
 .promptChip {
   width: auto;
   margin-top: 0;
@@ -203,6 +281,63 @@ input:focus, select:focus, textarea:focus {
 .msg.bot { background: #ddf0e7; border-left: 4px solid var(--accent-2); }
 .composer { margin-top: .8rem; }
 .status { font-size: .9rem; padding: .55rem; border-radius: 8px; background: #fff; border: 1px solid #00000022; }
+.fsPanel {
+  margin-bottom: .9rem;
+  padding: .68rem .74rem;
+  border: 1px solid #0d4b6238;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f6fbff 0%, #eef8fc 100%);
+}
+.fsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .45rem;
+}
+.fsHead h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.fsProjectLabel {
+  margin: 0;
+  font-size: .74rem;
+  color: #23546c;
+}
+.fsSelectedPath {
+  margin: .42rem 0 .2rem;
+  font-size: .73rem;
+  color: #2c556b;
+}
+.fsTree,
+.fsTree ul {
+  list-style: none;
+  margin: .45rem 0 0;
+  padding-left: .82rem;
+}
+.fsTree ul {
+  margin-top: .2rem;
+  border-left: 1px dashed #2c59722e;
+}
+.fsTree li {
+  margin: .19rem 0;
+  padding-left: .24rem;
+  line-height: 1.28;
+}
+.fsNode {
+  font-family: "IBM Plex Mono", Consolas, monospace;
+  font-size: .77rem;
+  cursor: pointer;
+}
+.fsNode.folder { color: #114e67; font-weight: 600; }
+.fsNode.file { color: #29495f; }
+.fsNode.selected {
+  background: #dff1f7;
+  border-radius: 6px;
+  padding: .05rem .22rem;
+}
+.fsTree li.collapsed > ul {
+  display: none;
+}
 .historyHead {
   margin-top: 1rem;
   display: flex;
@@ -247,4 +382,6 @@ input:focus, select:focus, textarea:focus {
   .nav { grid-area: nav; }
   .transparency { grid-area: transparency; }
   .messages { min-height: 300px; }
+  .chatControlGrid { grid-template-columns: 1fr; }
+  .chatSessionTools { width: 100%; }
 }

@@ -12,6 +12,30 @@ models:
     backend_model: gemma3:27b
     model_type: gemma3
     parameter_count_b: 27
+  llama3.3-70b:
+    api_base: http://127.0.0.1:11434/v1
+    profile: llama3.3-70b
+    backend_model: llama3.3:70b
+    model_type: llama3.3
+    parameter_count_b: 70
+  deepseek-r1-32b:
+    api_base: http://127.0.0.1:11434/v1
+    profile: deepseek-r1-32b
+    backend_model: deepseek-r1:32b
+    model_type: deepseek-r1
+    parameter_count_b: 32
+  deepseek-coder-16b:
+    api_base: http://127.0.0.1:11434/v1
+    profile: deepseek-coder-16b
+    backend_model: deepseek-coder:16b
+    model_type: deepseek-coder
+    parameter_count_b: 16
+  mistral-7b:
+    api_base: http://127.0.0.1:11434/v1
+    profile: mistral-7b
+    backend_model: mistral:7b
+    model_type: mistral
+    parameter_count_b: 7
 default_model: gemma2-2b
 fallbacks: {}
 role_token_limits:

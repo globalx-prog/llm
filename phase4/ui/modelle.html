@@ -11,6 +11,10 @@
       --panel: #fffdf8;
       --gemma2: #4a5eb8;
       --gemma3: #0f7a67;
+      --llama33: #a8561f;
+      --deepseekr1: #8a2c6f;
+      --deepseekcoder: #145a8d;
+      --mistral7b: #1f7d4f;
     }
     * { box-sizing: border-box; }
     body {
@@ -41,6 +45,10 @@
     }
     .model.gemma2 { border-left-color: var(--gemma2); }
     .model.gemma3 { border-left-color: var(--gemma3); }
+    .model.llama33 { border-left-color: var(--llama33); }
+    .model.deepseekr1 { border-left-color: var(--deepseekr1); }
+    .model.deepseekcoder { border-left-color: var(--deepseekcoder); }
+    .model.mistral7b { border-left-color: var(--mistral7b); }
     .mono {
       display: inline-block;
       background: #f5f7fa;
@@ -56,7 +64,7 @@
 <body>
   <main>
     <section class="card">
-      <h1>Gemma Modellprofile</h1>
+      <h1>LLM Modellprofile</h1>
       <p class="sub">Diese Seite beschreibt die aktuell im Stack verfuegbaren Modellprofile.</p>
 
       <article id="gemma2-2b" class="model gemma2">
@@ -80,6 +88,54 @@
           <li>Backend-Modell: <span class="mono">gemma3:27b</span></li>
           <li>Parameterzahl: <span class="mono">27B</span></li>
           <li>Einsatz: komplexe Aufgaben mit tieferem Reasoning</li>
+        </ul>
+      </article>
+
+      <article id="llama3.3-70b" class="model llama33">
+        <h2>Llama 3.3 70B</h2>
+        <p>Im Stack als OpenAI-kompatibles Profil `llama3.3-70b` vorgesehen.</p>
+        <ul>
+          <li>Backend-Ziel: <span class="mono">127.0.0.1:11434 (Ollama)</span></li>
+          <li>Profil: <span class="mono">llama3.3-70b</span></li>
+          <li>Backend-Modell: <span class="mono">llama3.3:70b</span></li>
+          <li>Parameterzahl: <span class="mono">70B</span></li>
+          <li>Einsatz: breite Wissens- und Planungsaufgaben</li>
+        </ul>
+      </article>
+
+      <article id="deepseek-r1-32b" class="model deepseekr1">
+        <h2>DeepSeek R1 32B</h2>
+        <p>Im Stack als OpenAI-kompatibles Profil `deepseek-r1-32b` vorgesehen.</p>
+        <ul>
+          <li>Backend-Ziel: <span class="mono">127.0.0.1:11434 (Ollama)</span></li>
+          <li>Profil: <span class="mono">deepseek-r1-32b</span></li>
+          <li>Backend-Modell: <span class="mono">deepseek-r1:32b</span></li>
+          <li>Parameterzahl: <span class="mono">32B</span></li>
+          <li>Einsatz: mehrstufiges Reasoning und Analyse</li>
+        </ul>
+      </article>
+
+      <article id="deepseek-coder-16b" class="model deepseekcoder">
+        <h2>DeepSeek Coder 16B</h2>
+        <p>Im Stack als OpenAI-kompatibles Profil `deepseek-coder-16b` vorgesehen.</p>
+        <ul>
+          <li>Backend-Ziel: <span class="mono">127.0.0.1:11434 (Ollama)</span></li>
+          <li>Profil: <span class="mono">deepseek-coder-16b</span></li>
+          <li>Backend-Modell: <span class="mono">deepseek-coder:16b</span></li>
+          <li>Parameterzahl: <span class="mono">16B</span></li>
+          <li>Einsatz: Coding, Refactoring, technische Assistenz</li>
+        </ul>
+      </article>
+
+      <article id="mistral-7b" class="model mistral7b">
+        <h2>Mistral 7B</h2>
+        <p>Im Stack als OpenAI-kompatibles Profil `mistral-7b` vorgesehen.</p>
+        <ul>
+          <li>Backend-Ziel: <span class="mono">127.0.0.1:11434 (Ollama)</span></li>
+          <li>Profil: <span class="mono">mistral-7b</span></li>
+          <li>Backend-Modell: <span class="mono">mistral:7b</span></li>
+          <li>Parameterzahl: <span class="mono">7B</span></li>
+          <li>Einsatz: schnelle, universelle Standardaufgaben</li>
         </ul>
       </article>
     </section>

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beispielprompts - LLM Control Deck</title>
+  <style>
+    :root {
+      --ink: #102131;
+      --paper: #f4f1e7;
+      --panel: #fffdf8;
+      --accent: #0f4e67;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(980px 460px at 0% -10%, #ffe8cf, transparent), var(--paper);
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid #00000020;
+      border-radius: 14px;
+      padding: .9rem;
+      margin-bottom: .9rem;
+      box-shadow: 0 10px 24px #00000011;
+    }
+    h1 { margin: 0 0 .35rem; }
+    .sub { margin: 0; opacity: .78; }
+    .prompt {
+      margin-top: .7rem;
+      padding: .72rem;
+      border: 1px solid #0f4e6733;
+      border-radius: 10px;
+      background: #f7fcff;
+    }
+    .prompt p {
+      margin: 0 0 .5rem;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
+    .copyBtn {
+      border: 0;
+      border-radius: 8px;
+      padding: .45rem .62rem;
+      color: white;
+      background: var(--accent);
+      cursor: pointer;
+      font: inherit;
+      font-size: .85rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>Beispielprompts</h1>
+      <p class="sub">Diese Prompts sind direkt auf das bestehende Projekt- und RAG-Setup abgestimmt.</p>
+    </section>
+
+    <section class="card">
+      <h2>Projektplanung</h2>
+      <div class="prompt">
+        <p id="p1">Erstelle einen priorisierten 5-Schritte-Plan fuer das Projekt mim-llm, inklusive erwarteter Risiken pro Schritt.</p>
+        <button class="copyBtn" data-target="p1" type="button">Kopieren</button>
+      </div>
+      <div class="prompt">
+        <p id="p2">Fasse den aktuellen Status der Phasen 2 bis 6 in maximal 10 Punkten zusammen und nenne die naechsten zwei sinnvollen Tasks.</p>
+        <button class="copyBtn" data-target="p2" type="button">Kopieren</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Operations / Runbook</h2>
+      <div class="prompt">
+        <p id="p3">Pruefe den Betriebsstatus der LLM-Services, nenne moegliche Single Points of Failure und schlage konkrete Alert-Regeln vor.</p>
+        <button class="copyBtn" data-target="p3" type="button">Kopieren</button>
+      </div>
+      <div class="prompt">
+        <p id="p4">Erzeuge ein kurzes Incident-Runbook fuer den Fall: Router up, Modellantworten timeouts. Mit Diagnose-Reihenfolge und Exit-Kriterien.</p>
+        <button class="copyBtn" data-target="p4" type="button">Kopieren</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Code / Architektur</h2>
+      <div class="prompt">
+        <p id="p5">Analysiere die Datei phase4/ui/app.js und nenne die 5 wichtigsten Refactoring-Punkte fuer Wartbarkeit.</p>
+        <button class="copyBtn" data-target="p5" type="button">Kopieren</button>
+      </div>
+      <div class="prompt">
+        <p id="p6">Vergleiche gemma2-2b und deepseek-coder-16b fuer Codeaufgaben in diesem Projekt und gib klare Auswahlregeln an.</p>
+        <button class="copyBtn" data-target="p6" type="button">Kopieren</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.querySelectorAll('.copyBtn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.target;
+        const text = document.getElementById(id)?.textContent || '';
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = 'Kopiert';
+          setTimeout(() => {
+            btn.textContent = 'Kopieren';
+          }, 1000);
+        } catch {
+          btn.textContent = 'Nicht moeglich';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

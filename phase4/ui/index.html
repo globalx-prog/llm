@@ -13,7 +13,11 @@
       <h1>LLM Control Deck</h1>
       <p class="subtitle">VPN-ready Projektarbeit mit RAG, Rollensteuerung und Audit</p>
     </div>
-    <div id="sessionBadge" class="badge">Nicht eingeloggt</div>
+    <div class="topbarActions">
+      <a class="topLink" href="beispielprompts.html" target="_blank" rel="noopener noreferrer">Beispielprompts</a>
+      <a class="topLink" href="hw-monitor.html" target="_blank" rel="noopener noreferrer">HW Ueberwachung</a>
+      <div id="sessionBadge" class="badge">Nicht eingeloggt</div>
+    </div>
   </header>
 
   <main class="layout">
@@ -63,10 +67,37 @@
           <select id="modelInput">
             <option value="gemma2-2b">Gemma2 2B - reales Serving</option>
             <option value="gemma3-27b">Gemma3 27B - komplexes Reasoning</option>
+            <option value="llama3.3-70b">Llama 3.3 70B - grossmodell</option>
+            <option value="deepseek-r1-32b">DeepSeek R1 32B - reasoning</option>
+            <option value="deepseek-coder-16b">DeepSeek Coder 16B - coding</option>
+            <option value="mistral-7b">Mistral 7B - schnell universal</option>
           </select>
-          <p class="fieldHelp">Waehlt das Antwortmodell. Gemma2 ist schneller, Gemma3 liefert meist tiefere und ausfuehrlichere Antworten.</p>
+          <p class="fieldHelp">Waehlt das Antwortmodell. Kleine Modelle sind schneller, grosse Modelle liefern meist tiefere Antworten bei hoeherem Ressourcenbedarf.</p>
         </label>
       </div>
+
+      <div class="chatControlGrid">
+        <label>Agent Mode
+          <select id="agentModeInput">
+            <option value="off">off (normal)</option>
+            <option value="planner">planner (strukturierte Plaene)</option>
+            <option value="coder">coder (Codefokus)</option>
+            <option value="reviewer">reviewer (Risiken und Checks)</option>
+          </select>
+          <p class="fieldHelp">Steuert die Arbeitsweise des Chats. Der Mode wird als Systemhinweis dem Prompt vorangestellt.</p>
+        </label>
+        <div class="chatSessionTools">
+          <button id="newChatBtn" class="ghostBtn" type="button">Neuer Chat</button>
+          <button id="clearActiveChatBtn" class="ghostBtn" type="button">Aktiven Chat leeren</button>
+        </div>
+      </div>
+
+      <section class="chatSessionsPanel" aria-label="Chats">
+        <div class="historyHead">
+          <h3>Chats</h3>
+        </div>
+        <ul id="chatSessionsList" class="chatSessions"></ul>
+      </section>
 
       <section id="modelInfo" class="modelInfo gemma2" aria-live="polite">
         <h3>Modellprofil</h3>
@@ -94,6 +125,11 @@
 
       <div id="messages" class="messages"></div>
 
+      <div class="promptExamplesHead">
+        <h3>Beispielprompts</h3>
+        <a class="topLink inline" href="beispielprompts.html" target="_blank" rel="noopener noreferrer">Alle Beispielprompts</a>
+      </div>
+
       <div class="promptExamples" aria-label="Beispielprompts">
         <button class="promptChip" type="button" data-prompt="Fasse die wichtigsten Punkte im Projekt mim-llm in 5 Stichpunkten zusammen.">Projektzusammenfassung</button>
         <button class="promptChip" type="button" data-prompt="Welche Risiken siehst du im aktuellen Setup und was sollte zuerst gehaertet werden?">Risikoanalyse</button>
@@ -108,6 +144,15 @@
     </section>
 
     <aside class="panel transparency">
+      <section class="fsPanel" aria-label="Dateisystemstruktur">
+        <div class="fsHead">
+          <h2>Dateisystem</h2>
+          <p id="fsProjectLabel" class="fsProjectLabel">Kontext: mim-llm</p>
+        </div>
+        <p id="fsSelectedPath" class="fsSelectedPath">Ausgewaehlt: -</p>
+        <ul id="fsTree" class="fsTree"></ul>
+      </section>
+
       <h2>Transparenz</h2>
       <div id="statusBox" class="status">Bereit</div>
 
