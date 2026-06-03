@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 import yaml
 from fastapi import FastAPI, Header, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -34,6 +35,14 @@ REQUEST_TIMEOUT_S = float(CFG.get("request_timeout_s", 2.5))
 CONCURRENCY_LIMIT = int(CFG.get("concurrency_limit", 16))
 
 app = FastAPI(title="phase2-router")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["null", "http://127.0.0.1:4173", "http://localhost:4173"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|100\.\d+\.\d+\.\d+|[A-Za-z0-9.-]+\.ts\.net)(:\d+)?$",
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 sem = asyncio.Semaphore(CONCURRENCY_LIMIT)
 METRICS_STARTED_AT = time.time()
 METRICS = {
