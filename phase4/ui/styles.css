@@ -496,6 +496,19 @@ input:focus, select:focus, textarea:focus {
 }
 .sources, .audit { margin: 0; padding-left: 1rem; max-height: 180px; overflow: auto; }
 .sources li, .audit li { margin-bottom: .45rem; font-size: .88rem; }
+.sourceMeta {
+  color: #3a3a3a;
+}
+.sourceLink {
+  color: #0d4b62;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.sourcePathPlain {
+  color: #4b4b4b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  word-break: break-all;
+}
 .sources li.sourceStrategyBadge {
   list-style: none;
   margin-left: -1rem;

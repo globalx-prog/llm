@@ -1478,7 +1478,28 @@ function renderSources(sources, strategy = '') {
 
   (sources || []).forEach((s) => {
     const li = document.createElement('li');
-    li.textContent = `${s.project || '-'} | ${s.title || '-'} | ${s.path || '-'}`;
+
+    const meta = document.createElement('span');
+    meta.className = 'sourceMeta';
+    meta.textContent = `${s.project || '-'} | ${s.title || '-'} | `;
+    li.appendChild(meta);
+
+    const rawPath = String(s.path || '').trim();
+    if (/^https?:\/\//i.test(rawPath)) {
+      const a = document.createElement('a');
+      a.className = 'sourceLink';
+      a.href = rawPath;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = rawPath;
+      li.appendChild(a);
+    } else {
+      const pathSpan = document.createElement('span');
+      pathSpan.className = 'sourcePathPlain';
+      pathSpan.textContent = rawPath || '-';
+      li.appendChild(pathSpan);
+    }
+
     ul.appendChild(li);
   });
 }
@@ -1553,6 +1574,7 @@ function formatInline(text) {
   let html = escapeHtml(text);
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
   return html;
 }
 
