@@ -60,6 +60,7 @@ class AnswerRequest(BaseModel):
     project: str | None = None
     use_web: bool = False
     web_top_k: int = 3
+    disable_context: bool = False
 
 
 class FileWriteRequest(BaseModel):
@@ -938,8 +939,8 @@ async def answer(
 ) -> dict[str, Any]:
     user, role = _identity(x_user, x_role)
     project = _enforce_project(user, req.project)
-    retrieval = pipeline.search(req.query, req.top_k, project)
-    hits = _dedupe_local_hits(retrieval.get("hits", []))
+    retrieval = pipeline.search(req.query, req.top_k, project) if not req.disable_context else {"query": req.query, "hits": []}
+    hits = _dedupe_local_hits(retrieval.get("hits", [])) if not req.disable_context else []
     web_hits = await _web_search_snippets(req.query, req.web_top_k) if req.use_web else []
     prefer_web = _prefer_web_sources(req.query, req.use_web, web_hits)
 
@@ -977,7 +978,7 @@ async def answer(
             source_text = str((match or {}).get("text", ""))
         context_blocks.append(f"[{i}] ({proj}) {title} | {path}\n{source_text}")
 
-    if not context_blocks:
+    if not context_blocks and not req.disable_context:
         return {
             "answer": "Keine passenden Quellen gefunden.",
             "sources": [],
@@ -996,10 +997,17 @@ async def answer(
         "Wenn in der Frage ein konkretes Jahr vorkommt, nenne Gewinner/Fakten nur dann, "
         "wenn genau dieses Jahr im Kontext eindeutig belegt ist; sonst antworte 'Unklar im Kontext'."
     )
-    user_prompt = (
-        "Frage:\n" + req.query + "\n\nKontext:\n" + "\n\n".join(context_blocks) + "\n\n"
-        "Antworte kurz und nenne die Quellenverweise [1], [2], ..."
-    )
+    if req.disable_context and not context_blocks:
+        user_prompt = (
+            "Frage:\n" + req.query + "\n\n"
+            "Hinweis: Lokaler Projektkontext ist deaktiviert. "
+            "Antworte nur aus allgemeinem Modellwissen und kennzeichne Unsicherheit klar."
+        )
+    else:
+        user_prompt = (
+            "Frage:\n" + req.query + "\n\nKontext:\n" + "\n\n".join(context_blocks) + "\n\n"
+            "Antworte kurz und nenne die Quellenverweise [1], [2], ..."
+        )
 
     payload = {
         "model": req.model,

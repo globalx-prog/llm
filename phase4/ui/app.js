@@ -148,6 +148,7 @@ const AGENT_MODES = {
   planner: 'Agent mode planner: Liefere eine strukturierte Antwort mit klaren Schritten, Prioritaeten und Abhaengigkeiten.',
   coder: 'Agent mode coder: Antworte codeorientiert mit konkreten Aenderungen, Risiken und Testhinweisen.',
   reviewer: 'Agent mode reviewer: Bewerte Risiken, Regressionen, Luecken und nenne verifizierbare Checks.',
+  no_context: 'Agent mode no_context: Antworte ohne lokalen Projektkontext; nutze nur Frage und optional Webquellen.',
 };
 
 function nowTs() {
@@ -2176,11 +2177,13 @@ el('sendBtn').addEventListener('click', async () => {
   const use_web = !!el('useWebInput')?.checked;
   const web_top_k = Number(el('webTopKInput')?.value || 3);
   const agentMode = el('agentModeInput').value;
+  const disable_context = agentMode === 'no_context';
 
   const chat = activeChat();
-  const contextFiles = Array.isArray(chat?.stash?.contextFiles) ? chat.stash.contextFiles : [];
+  const contextFilesRaw = Array.isArray(chat?.stash?.contextFiles) ? chat.stash.contextFiles : [];
+  const contextFiles = disable_context ? [] : contextFilesRaw;
   const modeHint = AGENT_MODES[agentMode] || '';
-  const contextHint = contextFiles.length
+  const contextHint = (!disable_context && contextFiles.length)
     ? `Kontextdateien (bitte inhaltlich beruecksichtigen):\n- ${contextFiles.join('\n- ')}\n\n`
     : '';
   const finalQuery = `${modeHint}${modeHint ? '\n\n' : ''}${contextHint}${query}`;
@@ -2194,7 +2197,7 @@ el('sendBtn').addEventListener('click', async () => {
   const postAnswer = async (projectOverride = project) => requestJson(`${API_BASE}/v1/rag/answer`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ query: finalQuery, model, project: projectOverride, top_k, use_web, web_top_k, agent_mode: agentMode, context_files: contextFiles }),
+    body: JSON.stringify({ query: finalQuery, model, project: projectOverride, top_k, use_web, web_top_k, agent_mode: agentMode, context_files: contextFiles, disable_context }),
   });
 
   try {
@@ -2235,7 +2238,8 @@ el('sendBtn').addEventListener('click', async () => {
       addAudit('low_confidence', query);
     } else {
       const webHint = data.web_used ? ` | Web-Treffer: ${Number(data.web_hits || 0)}` : ' | Web: aus';
-      setStatus(`Antwort erhalten. Quellen aktualisiert.${webHint}`);
+      const contextHintLabel = disable_context ? ' | Kontext: aus' : ' | Kontext: an';
+      setStatus(`Antwort erhalten. Quellen aktualisiert.${webHint}${contextHintLabel}`);
       addAudit('answer', `model=${model}, mode=${agentMode}, sources=${(data.sources || []).length}`);
     }
   } catch (err) {

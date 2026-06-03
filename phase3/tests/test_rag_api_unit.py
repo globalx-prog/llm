@@ -226,6 +226,23 @@ class RagApiUnitTests(unittest.TestCase):
         self.assertEqual(200, r.status_code)
         self.assertIn("keine wissenschaftlich eindeutige", r.json().get("answer", "").lower())
 
+    def test_answer_disable_context_mode(self):
+        with patch.object(self.mod.httpx, "AsyncClient", _FakeAsyncClient):
+            with patch.object(self.mod, "_web_search_snippets", AsyncMock(return_value=[])):
+                r = self.client.post(
+                    "/v1/rag/answer",
+                    json={
+                        "query": "kurze erklaerung zu linux",
+                        "project": "mim-llm",
+                        "disable_context": True,
+                        "use_web": False,
+                    },
+                    headers={"x-user": "reader", "x-role": "reviewer"},
+                )
+        self.assertEqual(200, r.status_code)
+        self.assertIn("Real Madrid gewann 2026", r.json().get("answer", ""))
+        self.assertEqual([], r.json().get("sources", []))
+
 
 if __name__ == "__main__":
     unittest.main()
